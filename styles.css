@@ -73,6 +73,11 @@ body.dark .container-card.overdue { background: #3a2425; }
 .readonly-label { margin-top:.35rem; color: var(--ok); font-size:.86rem; }
 .hint { opacity:.8; font-size:.9rem; }
 .hint.error { color: var(--danger); min-height: 1.1rem; }
+.settings-options { border: 1px solid var(--border); border-radius: 12px; padding: .8rem; margin: 0; }
+.settings-options legend { padding: 0 .3rem; font-weight: 700; }
+.settings-options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: .5rem .75rem; }
+.settings-options-grid label { display: flex; align-items: center; gap: .45rem; font-weight: 500; }
+.settings-options-grid input[type="checkbox"] { width: auto; }
 .proof-list { list-style:none; padding:0; display:grid; gap:.55rem; }
 .proof-item { border:1px solid var(--border); border-radius:10px; padding:.6rem; }
 .proof-item img { width:100%; max-width:180px; border-radius:8px; margin-top:.4rem; cursor: zoom-in; }
