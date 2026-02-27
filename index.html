@@ -8,9 +8,12 @@
   </head>
   <body>
     <main class="app">
-      <header>
-        <h1>Cédule de conteneurs</h1>
-        <p>Chaque zone est séparée en page. Utilisez le menu fixe en bas pour naviguer.</p>
+      <header class="top-header">
+        <div>
+          <h1>Cédule de conteneurs</h1>
+          <p>Vue hebdomadaire du lundi au vendredi, par zone.</p>
+        </div>
+        <button id="settings-shortcut" class="icon-btn" type="button" aria-label="Paramètres">⚙️</button>
       </header>
 
       <section class="card page" data-page="dashboard">
@@ -22,89 +25,79 @@
           </div>
           <button id="next-week" type="button">Semaine suivante →</button>
         </div>
-        <h2>Dashboard entrepôts (semaine affichée)</h2>
+        <h2>Dashboard zones (graphique lundi à vendredi)</h2>
         <div id="warehouse-summary" class="summary-grid"></div>
       </section>
 
-      <section class="card page" data-page="import">
-        <h2>Import Power Automate (e-mails)</h2>
-        <p class="hint">
-          Exemple (1 ligne): <strong>ASN-1022;CMAU1234567;2026-02-15;https://lien-items</strong><br />
-          Format: ASN;Numéro de conteneur;LFD;Lien vers la liste d’items (optionnel).
-        </p>
-        <textarea id="email-import" rows="5" placeholder="COLLER LA SORTIE POWER AUTOMATE..."></textarea>
-        <div class="actions left">
-          <button id="import-email" type="button" class="email">Importer</button>
-        </div>
-
-        <h3>Liste importée (conteneur + LFD)</h3>
-        <ul id="pending-list" class="history"></ul>
+      <section class="card page" data-page="week">
+        <h2>Vue de la semaine (lundi à vendredi)</h2>
+        <p class="hint">Chaque conteneur affiche des actions rapides. Une fois archivé, affichage en lecture seule.</p>
+        <div id="week-view" class="week-grid"></div>
       </section>
 
       <section class="card page" data-page="schedule">
         <h2>Nouvelle cédule</h2>
         <form id="schedule-form">
-          <div class="grid">
-            <label>Entrepôt<select id="warehouse" required><option value="Langelier">Langelier</option><option value="Laval">Laval</option><option value="5995">5995</option></select></label>
-            <label>Date<input type="date" id="date" required /></label>
-            <label>Heure de cédule<input type="time" id="startTime" required /></label>
-            <label>Numéro de conteneur<input type="text" id="containerNumber" required /></label>
-            <label>Type<select id="containerType"><option value="20FT">20FT</option><option value="40FT">40FT</option></select></label>
-            <label>LFD<input type="date" id="lfd" required /></label>
-            <label>Porte / reculage<input type="text" id="door" required /></label>
-            <label>E-mail destinataire<input type="email" id="email" required /></label>
-            <label>Items (option)<input type="text" id="items" /></label>
-            <label>Quantité totale<input type="number" id="quantity" min="0" step="1" /></label>
-            <label class="full-width">Notes<textarea id="notes" rows="3"></textarea></label>
+          <div class="grid compact">
+            <label>Zone
+              <select id="warehouse" required>
+                <option value="Langelier">Langelier</option>
+                <option value="Laval">Laval</option>
+                <option value="5995">5995</option>
+              </select>
+            </label>
+            <label>Date
+              <input type="date" id="date" required />
+            </label>
+            <label>Heure de cédule
+              <select id="startTime" required></select>
+            </label>
+            <label>Numéro de conteneur
+              <input type="text" id="containerNumber" required placeholder="MSMU1231234" />
+            </label>
+            <label>LFD
+              <input type="date" id="lfd" required />
+            </label>
           </div>
+          <p id="slot-message" class="hint"></p>
           <div class="actions"><button type="submit" class="primary">Ajouter à la cédule</button></div>
         </form>
       </section>
 
-      <section class="card page" data-page="history">
-        <h2>Cédules de la semaine</h2>
-        <ul id="history" class="history"></ul>
-      </section>
-
       <section class="card page" data-page="proof">
-        <h2>Preuve de réception</h2>
+        <h2>Archivage avec preuve</h2>
         <form id="proof-form" class="proof-form">
           <label>Associer au conteneur<select id="proof-container" required></select></label>
-          <label>Photo du bon<input type="file" id="proof-photo" accept="image/*" required /></label>
+          <label>Photo de réception<input type="file" id="proof-photo" accept="image/*" required /></label>
           <label>Heure de réception<input type="time" id="proof-time" required /></label>
-          <label>Items reçus<input type="text" id="proof-items" required /></label>
-          <label>Qté reçue<input type="number" id="proof-qty" min="0" step="1" required /></label>
-          <button type="submit" class="primary">Archiver la preuve</button>
+          <button type="submit" class="primary">Archiver</button>
         </form>
         <ul id="proof-list" class="proof-list"></ul>
       </section>
 
-      <section class="card page" data-page="items">
-        <h2>Liste des items (option)</h2>
-        <p id="asn-message">Sélectionnez un bouton ASN depuis la page Import.</p>
-        <a id="asn-link" href="#" target="_blank" rel="noopener" class="asn-anchor hidden">Ouvrir la liste des items</a>
+      <section class="card page" data-page="settings">
+        <h2>Paramètres d’alertes</h2>
+        <form id="settings-form" class="grid compact">
+          <label>Intervalle des alertes (minutes)
+            <input type="number" id="alert-interval" min="1" step="1" required />
+          </label>
+          <div class="actions left">
+            <button type="submit" class="primary">Enregistrer les paramètres</button>
+          </div>
+        </form>
+        <p class="hint">Les alertes concernent les conteneurs passés (date dépassée) non archivés avec preuve photo.</p>
       </section>
+
+      <div id="alert-box" class="alert-box hidden"></div>
     </main>
 
     <nav class="bottom-nav" aria-label="Navigation des pages">
       <button type="button" data-target="dashboard">Dashboard</button>
-      <button type="button" data-target="import">Import</button>
+      <button type="button" data-target="week">Semaine</button>
       <button type="button" data-target="schedule">Cédule</button>
-      <button type="button" data-target="history">Historique</button>
-      <button type="button" data-target="proof">Preuve</button>
-      <button type="button" data-target="items">Items</button>
+      <button type="button" data-target="proof">Archive</button>
+      <button type="button" data-target="settings">Paramètres</button>
     </nav>
-
-    <template id="history-item-template">
-      <li class="history-item">
-        <div class="content"></div>
-        <div class="item-actions">
-          <button class="edit">Modifier</button>
-          <button class="email">Envoyer e-mail</button>
-          <button class="delete">Supprimer</button>
-        </div>
-      </li>
-    </template>
 
     <script src="script.js" defer></script>
   </body>
