@@ -18,12 +18,37 @@ const settingsKey = 'container-schedule-settings-v2';
 const uiKey = 'container-ui-v2';
 const draftKey = 'container-draft-v1';
 const safeParse = (value, fallback) => { try { return JSON.parse(value); } catch { return fallback; } };
+const isValidDate = (value) => value instanceof Date && !Number.isNaN(value.getTime());
+const getSafeDate = (value, fallback = new Date()) => {
+  const parsed = new Date(value);
+  return isValidDate(parsed) ? parsed : fallback;
+};
+
 let entries = safeParse(localStorage.getItem(storageKey), []);
+if (!Array.isArray(entries)) entries = [];
+
 let proofs = safeParse(localStorage.getItem(proofKey), []);
-let settings = safeParse(localStorage.getItem(settingsKey), { alertIntervalMinutes: 60, muteAlerts: false, compactMode: false, reduceMotion: false });
-let ui = safeParse(localStorage.getItem(uiKey), { page: 'dashboard', dark: false, weekStart: null });
+if (!Array.isArray(proofs)) proofs = [];
+
+let settings = {
+  alertIntervalMinutes: 60,
+  muteAlerts: false,
+  compactMode: false,
+  reduceMotion: false,
+  ...safeParse(localStorage.getItem(settingsKey), {}),
+};
+
+let ui = {
+  page: 'dashboard',
+  dark: false,
+  weekStart: null,
+  ...safeParse(localStorage.getItem(uiKey), {}),
+};
+
 let draft = safeParse(localStorage.getItem(draftKey), {});
-let currentWeekStart = ui.weekStart ? new Date(ui.weekStart) : getStartOfWeek(new Date());
+if (!draft || typeof draft !== 'object') draft = {};
+
+let currentWeekStart = getStartOfWeek(getSafeDate(ui.weekStart));
 let alertTimer = null;
 let undoDeletedEntry = null;
 
