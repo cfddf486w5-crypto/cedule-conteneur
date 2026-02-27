@@ -24,6 +24,79 @@ const getSafeDate = (value, fallback = new Date()) => {
   return isValidDate(parsed) ? parsed : fallback;
 };
 
+const extraSettingLabels = [
+  'Activer rappel à 24h',
+  'Activer rappel à 48h',
+  'Afficher le numéro de conteneur en gras',
+  'Afficher les zones avec couleurs distinctes',
+  'Confirmer avant archivage',
+  'Confirmer avant suppression',
+  'Notifier pour les imports JSON',
+  'Masquer les entrées archivées par défaut',
+  'Trier les retards en premier',
+  'Activer son d’alerte',
+  'Afficher l’heure serveur',
+  'Utiliser format de date court',
+  'Utiliser format de date long',
+  'Montrer les LFD en rouge à J-1',
+  'Montrer badge importé',
+  'Activer aperçu avant impression',
+  'Activer export automatique quotidien',
+  'Afficher compteur total sur la nav',
+  'Afficher compteur retard sur la nav',
+  'Désactiver notifications toast',
+  'Agrandir cartes de conteneurs',
+  'Réduire marges du dashboard',
+  'Activer tri intelligent des créneaux',
+  'Afficher semaine ISO',
+  'Autoriser doublon de numéro',
+  'Exiger note à l’archivage',
+  'Activer verrouillage après archivage',
+  'Montrer historique des modifications',
+  'Activer mode lecture seule le weekend',
+  'Activer bordure forte pour retards',
+  'Afficher photo miniature dans la semaine',
+  'Activer synchronisation locale fréquente',
+  'Nettoyer automatiquement brouillon à minuit',
+  'Activer contraste renforcé',
+  'Afficher résumé par jour dans dashboard',
+  'Rendre champs obligatoires en MAJUSCULES',
+  'Afficher message de bienvenue',
+  'Activer rappel de sauvegarde',
+  'Activer validation stricte du conteneur',
+  'Forcer ouverture sur Dashboard',
+  'Activer raccourcis clavier avancés',
+  'Afficher infobulles sur boutons',
+  'Garder filtres de recherche persistants',
+  'Masquer export CSV',
+  'Afficher temps depuis dernière MAJ',
+  'Activer rappel photo manquante',
+  'Activer suggestion d’heure automatique',
+  'Afficher version de l’application',
+  'Activer mode discret (sans son)',
+  'Envoyer copie locale des preuves',
+];
+
+function normalizeExtraOptions(raw) {
+  const normalized = {};
+  extraSettingLabels.forEach((_, index) => {
+    normalized[`option-${index + 1}`] = Boolean(raw && raw[`option-${index + 1}`]);
+  });
+  return normalized;
+}
+
+function renderExtraSettingOptions() {
+  const optionsRoot = document.getElementById('extra-settings-options');
+  if (!optionsRoot) return;
+  optionsRoot.innerHTML = extraSettingLabels.map((label, index) => {
+    const optionId = `setting-option-${index + 1}`;
+    const optionKey = `option-${index + 1}`;
+    const checked = settings.extraOptions?.[optionKey] ? 'checked' : '';
+    return `<label for="${optionId}"><input id="${optionId}" data-option-key="${optionKey}" type="checkbox" ${checked} /> ${label}</label>`;
+  }).join('');
+}
+
+
 let entries = safeParse(localStorage.getItem(storageKey), []);
 if (!Array.isArray(entries)) entries = [];
 
@@ -35,8 +108,10 @@ let settings = {
   muteAlerts: false,
   compactMode: false,
   reduceMotion: false,
+  extraOptions: {},
   ...safeParse(localStorage.getItem(settingsKey), {}),
 };
+settings.extraOptions = normalizeExtraOptions(settings.extraOptions);
 
 let ui = {
   page: 'dashboard',
@@ -54,6 +129,8 @@ let undoDeletedEntry = null;
 
 const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
 const warehouses = ['Langelier', 'Laval', '5995'];
+
+
 
 function saveAll() {
   localStorage.setItem(storageKey, JSON.stringify(entries));
@@ -347,6 +424,12 @@ settingsForm.addEventListener('submit', (event) => {
   settings.muteAlerts = document.getElementById('mute-alerts').checked;
   settings.compactMode = document.getElementById('compact-mode').checked;
   settings.reduceMotion = document.getElementById('reduce-motion').checked;
+  settings.extraOptions = normalizeExtraOptions(
+    Array.from(document.querySelectorAll('#extra-settings-options input[type="checkbox"]')).reduce((acc, checkbox) => {
+      acc[checkbox.dataset.optionKey] = checkbox.checked;
+      return acc;
+    }, {}),
+  );
   document.body.classList.toggle('compact', settings.compactMode);
   document.body.classList.toggle('reduce-motion', settings.reduceMotion);
   saveAll(); restartAlertLoop(); showToast('Paramètres enregistrés.');
@@ -413,6 +496,7 @@ document.getElementById('alert-interval').value = settings.alertIntervalMinutes;
 document.getElementById('mute-alerts').checked = settings.muteAlerts;
 document.getElementById('compact-mode').checked = settings.compactMode;
 document.getElementById('reduce-motion').checked = settings.reduceMotion;
+renderExtraSettingOptions();
 document.body.classList.toggle('compact', settings.compactMode);
 document.body.classList.toggle('reduce-motion', settings.reduceMotion);
 document.body.classList.toggle('dark', ui.dark);
