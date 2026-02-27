@@ -8,39 +8,35 @@ const pendingListElement = document.getElementById('pending-list');
 const proofContainerSelect = document.getElementById('proof-container');
 const proofForm = document.getElementById('proof-form');
 const proofList = document.getElementById('proof-list');
+const pages = document.querySelectorAll('.page');
+const navButtons = document.querySelectorAll('.bottom-nav button');
+const asnMessage = document.getElementById('asn-message');
+const asnLink = document.getElementById('asn-link');
 
-const storageKey = 'container-schedule-history-v2';
-const pendingKey = 'container-schedule-pending-v2';
-const proofKey = 'container-schedule-proof-v2';
-
+const storageKey = 'container-schedule-history-v3';
+const pendingKey = 'container-schedule-pending-v3';
+const proofKey = 'container-schedule-proof-v3';
 let entries = JSON.parse(localStorage.getItem(storageKey) || '[]');
 let pendingContainers = JSON.parse(localStorage.getItem(pendingKey) || '[]');
 let proofs = JSON.parse(localStorage.getItem(proofKey) || '[]');
 let currentWeekStart = getStartOfWeek(new Date());
 
 const warehouseRules = {
-  Langelier: {
-    maxPerSlot: 1,
-    maxPerDay: 2,
-    allowedSlots: ['08:00', '12:00'],
-    allowedDoors: ['2'],
-  },
-  Laval: {
-    maxPerSlot: 3,
-    slotIntervalMinutes: 30,
-    allowedDoors: ['1', '2', '3', '4', '5'],
-  },
-  '5995': {
-    maxPerSlot: 3,
-    slotIntervalMinutes: 30,
-    allowedDoors: ['1', '2', '3', '4', '5'],
-  },
+  Langelier: { maxPerSlot: 1, maxPerDay: 2, allowedSlots: ['08:00', '12:00'], allowedDoors: ['2'] },
+  Laval: { maxPerSlot: 3, slotIntervalMinutes: 30, allowedDoors: ['1', '2', '3', '4', '5'] },
+  '5995': { maxPerSlot: 3, slotIntervalMinutes: 30, allowedDoors: ['1', '2', '3', '4', '5'] },
 };
 
 function saveAll() {
   localStorage.setItem(storageKey, JSON.stringify(entries));
   localStorage.setItem(pendingKey, JSON.stringify(pendingContainers));
   localStorage.setItem(proofKey, JSON.stringify(proofs));
+}
+
+function switchPage(pageName) {
+  pages.forEach((page) => page.classList.toggle('active', page.dataset.page === pageName));
+  navButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.target === pageName));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function getStartOfWeek(date) {
@@ -70,22 +66,17 @@ function isDateInCurrentWeek(dateStr) {
 }
 
 function getEntryDurationHours(entry) {
-  if (entry.warehouse === 'Langelier') {
-    return 4;
-  }
+  if (entry.warehouse === 'Langelier') return 4;
   return entry.containerType === '40FT' ? 4 : 2;
 }
 
 function getStatus(entry) {
-  if (!entry.lfd) {
-    return 'ok';
-  }
+  if (!entry.lfd) return 'ok';
   return entry.date > entry.lfd ? 'late' : 'ok';
 }
 
 function buildEntryContent(entry) {
-  const status = getStatus(entry);
-  const statusLabel = status === 'late' ? 'RETARD (LFD dépassé)' : 'À temps';
+  const statusLabel = getStatus(entry) === 'late' ? 'RETARD (LFD dépassé)' : 'À temps';
   const qtyText = entry.quantity ? ` | Qté: ${entry.quantity}` : '';
   const itemsText = entry.items ? ` | Items: ${entry.items}` : '';
   return `${entry.warehouse} — ${entry.containerNumber} (${entry.containerType}) | ${entry.date} ${entry.startTime} (${getEntryDurationHours(entry)}h) | LFD: ${entry.lfd} | Porte: ${entry.door}${itemsText}${qtyText} | ${statusLabel} | ${entry.notes || 'Sans notes'}`;
@@ -100,7 +91,6 @@ function renderWeekHeader() {
 function renderSummary() {
   const weekEntries = entries.filter((entry) => isDateInCurrentWeek(entry.date));
   const warehouses = ['Langelier', 'Laval', '5995'];
-
   summaryElement.innerHTML = '';
   warehouses.forEach((name) => {
     const count = weekEntries.filter((entry) => entry.warehouse === name).length;
@@ -112,6 +102,21 @@ function renderSummary() {
   });
 }
 
+function openAsnLink(item) {
+  asnMessage.textContent = `ASN ${item.asn || '-'} sélectionné.`;
+  if (!item.itemLink) {
+    asnLink.classList.add('hidden');
+    asnLink.removeAttribute('href');
+    asnMessage.textContent += ' Aucun lien items fourni.';
+    return;
+  }
+
+  asnLink.classList.remove('hidden');
+  asnLink.href = item.itemLink;
+  asnLink.textContent = `Ouvrir la liste des items pour ASN ${item.asn || '-'}`;
+  switchPage('items');
+}
+
 function renderPendingList() {
   pendingListElement.innerHTML = '';
   if (!pendingContainers.length) {
@@ -119,40 +124,20 @@ function renderPendingList() {
     return;
   }
 
-  pendingContainers.forEach((item, index) => {
+  pendingContainers.forEach((item) => {
     const li = document.createElement('li');
     li.className = 'history-item';
-    li.innerHTML = `<div class="content">${item.containerNumber} | LFD: ${item.lfd} | Porte: ${item.door || '-'} | ${item.containerType || '20FT'} | Items: ${item.items || '-'} | Qté: ${item.quantity || '-'}</div>`;
+    li.innerHTML = `<div class="content">${item.containerNumber} | LFD: ${item.lfd || '-'} </div>`;
 
     const actions = document.createElement('div');
     actions.className = 'item-actions';
 
-    const placeButton = document.createElement('button');
-    placeButton.textContent = 'Placer à la cédule';
-    placeButton.className = 'edit';
-    placeButton.addEventListener('click', () => {
-      document.getElementById('containerNumber').value = item.containerNumber;
-      document.getElementById('lfd').value = item.lfd || '';
-      document.getElementById('door').value = item.door || '';
-      document.getElementById('containerType').value = item.containerType || '20FT';
-      document.getElementById('items').value = item.items || '';
-      document.getElementById('quantity').value = item.quantity || '';
-      pendingContainers.splice(index, 1);
-      saveAll();
-      renderPendingList();
-    });
+    const asnButton = document.createElement('button');
+    asnButton.className = 'email';
+    asnButton.textContent = `${item.asn || 'ASN'} (lien)`;
+    asnButton.addEventListener('click', () => openAsnLink(item));
 
-    const removeButton = document.createElement('button');
-    removeButton.className = 'delete';
-    removeButton.textContent = 'Retirer';
-    removeButton.addEventListener('click', () => {
-      pendingContainers.splice(index, 1);
-      saveAll();
-      renderPendingList();
-    });
-
-    actions.appendChild(placeButton);
-    actions.appendChild(removeButton);
+    actions.appendChild(asnButton);
     li.appendChild(actions);
     pendingListElement.appendChild(li);
   });
@@ -186,18 +171,13 @@ function renderProofList() {
   proofs.forEach((proof) => {
     const li = document.createElement('li');
     li.className = 'proof-item';
-    li.innerHTML = `
-      <strong>${proof.containerNumber}</strong> — ${proof.receivedDate} ${proof.receivedTime}<br />
-      Items: ${proof.items} | Qté: ${proof.quantity}<br />
-      <img src="${proof.photoData}" alt="Preuve ${proof.containerNumber}" />
-    `;
+    li.innerHTML = `<strong>${proof.containerNumber}</strong> — ${proof.receivedDate} ${proof.receivedTime}<br />Items: ${proof.items} | Qté: ${proof.quantity}<br /><img src="${proof.photoData}" alt="Preuve ${proof.containerNumber}" />`;
     proofList.appendChild(li);
   });
 }
 
 function renderHistory() {
   historyElement.innerHTML = '';
-
   const weekEntries = entries.filter((entry) => isDateInCurrentWeek(entry.date));
   if (!weekEntries.length) {
     historyElement.innerHTML = '<li>Aucune cédule pour cette semaine.</li>';
@@ -209,9 +189,7 @@ function renderHistory() {
   weekEntries.forEach((entry) => {
     const node = template.content.firstElementChild.cloneNode(true);
     node.querySelector('.content').textContent = buildEntryContent(entry);
-    if (getStatus(entry) === 'late') {
-      node.classList.add('late');
-    }
+    if (getStatus(entry) === 'late') node.classList.add('late');
 
     node.querySelector('.delete').addEventListener('click', () => {
       entries = entries.filter((candidate) => candidate.id !== entry.id);
@@ -232,29 +210,15 @@ function renderHistory() {
       document.getElementById('items').value = entry.items || '';
       document.getElementById('quantity').value = entry.quantity || '';
       document.getElementById('notes').value = entry.notes;
-
       entries = entries.filter((candidate) => candidate.id !== entry.id);
       saveAll();
       renderHistory();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      switchPage('schedule');
     });
 
     node.querySelector('.email').addEventListener('click', () => {
       const subject = encodeURIComponent(`Mise à jour cédule conteneur ${entry.containerNumber}`);
-      const body = encodeURIComponent(
-        `Bonjour,\n\n` +
-          `Cédule conteneur:\n` +
-          `Entrepôt: ${entry.warehouse}\n` +
-          `Date: ${entry.date}\n` +
-          `Heure: ${entry.startTime}\n` +
-          `Durée prévue: ${getEntryDurationHours(entry)}h\n` +
-          `Conteneur: ${entry.containerNumber}\n` +
-          `LFD: ${entry.lfd}\n` +
-          `Porte/reculage: ${entry.door}\n` +
-          `Items: ${entry.items || '-'}\n` +
-          `Qté: ${entry.quantity || '-'}\n` +
-          `Notes: ${entry.notes || 'Aucune'}\n\nMerci.`
-      );
+      const body = encodeURIComponent(`Bonjour,\n\nCédule conteneur:\nEntrepôt: ${entry.warehouse}\nDate: ${entry.date}\nHeure: ${entry.startTime}\nDurée prévue: ${getEntryDurationHours(entry)}h\nConteneur: ${entry.containerNumber}\nLFD: ${entry.lfd}\nPorte/reculage: ${entry.door}\nItems: ${entry.items || '-'}\nQté: ${entry.quantity || '-'}\nNotes: ${entry.notes || 'Aucune'}\n\nMerci.`);
       window.location.href = `mailto:${entry.email}?subject=${subject}&body=${body}`;
     });
 
@@ -271,40 +235,18 @@ function validateConstraints(newEntry) {
   const rules = warehouseRules[newEntry.warehouse];
 
   if (newEntry.warehouse === 'Langelier') {
-    if (!rules.allowedSlots.includes(newEntry.startTime)) {
-      return 'Langelier accepte uniquement 08:00 ou 12:00.';
-    }
-
-    if (dayEntries.length >= rules.maxPerDay) {
-      return 'Langelier est limité à 2 conteneurs par jour.';
-    }
-
-    if (sameTimeEntries.length >= rules.maxPerSlot) {
-      return 'Le créneau sélectionné est déjà pris pour Langelier.';
-    }
-
-    if (!rules.allowedDoors.some((door) => newEntry.door.includes(door))) {
-      return 'Langelier utilise uniquement la porte dock 2.';
-    }
+    if (!rules.allowedSlots.includes(newEntry.startTime)) return 'Langelier accepte uniquement 08:00 ou 12:00.';
+    if (dayEntries.length >= rules.maxPerDay) return 'Langelier est limité à 2 conteneurs par jour.';
+    if (sameTimeEntries.length >= rules.maxPerSlot) return 'Le créneau sélectionné est déjà pris pour Langelier.';
+    if (!rules.allowedDoors.some((door) => newEntry.door.includes(door))) return 'Langelier utilise uniquement la porte dock 2.';
   }
 
   if (newEntry.warehouse === 'Laval' || newEntry.warehouse === '5995') {
     const [hour, minute] = newEntry.startTime.split(':').map(Number);
-    if (minute % rules.slotIntervalMinutes !== 0) {
-      return `${newEntry.warehouse}: la cédule doit être sur des intervalles de 30 minutes.`;
-    }
-
-    if (sameTimeEntries.length >= rules.maxPerSlot) {
-      return `${newEntry.warehouse}: maximum 3 conteneurs simultanément.`;
-    }
-
-    if (!rules.allowedDoors.some((door) => newEntry.door.includes(door))) {
-      return `${newEntry.warehouse}: les portes valides sont 1 à 5.`;
-    }
-
-    if (hour < 0 || hour > 23) {
-      return `${newEntry.warehouse}: heure invalide.`;
-    }
+    if (minute % rules.slotIntervalMinutes !== 0) return `${newEntry.warehouse}: la cédule doit être sur des intervalles de 30 minutes.`;
+    if (sameTimeEntries.length >= rules.maxPerSlot) return `${newEntry.warehouse}: maximum 3 conteneurs simultanément.`;
+    if (!rules.allowedDoors.some((door) => newEntry.door.includes(door))) return `${newEntry.warehouse}: les portes valides sont 1 à 5.`;
+    if (hour < 0 || hour > 23) return `${newEntry.warehouse}: heure invalide.`;
   }
 
   return null;
@@ -316,22 +258,19 @@ function parseEmailInput(rawText) {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const [containerNumber, lfd, door, containerType, items, quantity] = line.split(';').map((chunk) => chunk?.trim());
-      return {
-        containerNumber: (containerNumber || '').toUpperCase(),
-        lfd: lfd || '',
-        door: door || '',
-        containerType: containerType || '20FT',
-        items: items || '',
-        quantity: quantity || '',
-      };
+      const chunks = line.split(';').map((part) => part.trim());
+      if (chunks.length >= 4) {
+        const [asn, containerNumber, lfd, itemLink] = chunks;
+        return { asn, containerNumber: (containerNumber || '').toUpperCase(), lfd: lfd || '', itemLink: itemLink || '' };
+      }
+      const [containerNumber, lfd] = chunks;
+      return { asn: '', containerNumber: (containerNumber || '').toUpperCase(), lfd: lfd || '', itemLink: '' };
     })
     .filter((item) => item.containerNumber);
 }
 
 form.addEventListener('submit', (event) => {
   event.preventDefault();
-
   const warehouse = document.getElementById('warehouse').value;
   const date = document.getElementById('date').value;
   const startTime = document.getElementById('startTime').value;
@@ -349,26 +288,9 @@ form.addEventListener('submit', (event) => {
     return;
   }
 
-  const newEntry = {
-    id: crypto.randomUUID(),
-    warehouse,
-    date,
-    startTime,
-    containerNumber,
-    containerType,
-    lfd,
-    door,
-    email,
-    items,
-    quantity,
-    notes,
-  };
-
+  const newEntry = { id: crypto.randomUUID(), warehouse, date, startTime, containerNumber, containerType, lfd, door, email, items, quantity, notes };
   const validationError = validateConstraints(newEntry);
-  if (validationError) {
-    alert(validationError);
-    return;
-  }
+  if (validationError) return alert(validationError);
 
   entries.push(newEntry);
   entries.sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`));
@@ -376,16 +298,13 @@ form.addEventListener('submit', (event) => {
   renderWeekHeader();
   renderHistory();
   form.reset();
+  switchPage('history');
 });
 
 document.getElementById('import-email').addEventListener('click', () => {
   const raw = document.getElementById('email-import').value;
   const parsed = parseEmailInput(raw);
-
-  if (!parsed.length) {
-    alert('Aucune ligne valide trouvée.');
-    return;
-  }
+  if (!parsed.length) return alert('Aucune ligne valide trouvée.');
 
   pendingContainers.unshift(...parsed);
   saveAll();
@@ -395,37 +314,20 @@ document.getElementById('import-email').addEventListener('click', () => {
 
 proofForm.addEventListener('submit', (event) => {
   event.preventDefault();
-
   const containerId = proofContainerSelect.value;
   const photoFile = document.getElementById('proof-photo').files[0];
   const receivedTime = document.getElementById('proof-time').value;
   const items = document.getElementById('proof-items').value.trim();
   const quantity = document.getElementById('proof-qty').value;
 
-  if (!containerId || !photoFile || !receivedTime || !items || !quantity) {
-    alert('Veuillez remplir tous les champs de preuve.');
-    return;
-  }
+  if (!containerId || !photoFile || !receivedTime || !items || !quantity) return alert('Veuillez remplir tous les champs de preuve.');
 
   const entry = entries.find((candidate) => candidate.id === containerId);
-  if (!entry) {
-    alert('Le conteneur sélectionné est introuvable.');
-    return;
-  }
+  if (!entry) return alert('Le conteneur sélectionné est introuvable.');
 
   const reader = new FileReader();
   reader.onload = () => {
-    proofs.unshift({
-      id: crypto.randomUUID(),
-      containerId,
-      containerNumber: entry.containerNumber,
-      receivedDate: formatDate(new Date()),
-      receivedTime,
-      items,
-      quantity,
-      photoData: reader.result,
-    });
-
+    proofs.unshift({ id: crypto.randomUUID(), containerId, containerNumber: entry.containerNumber, receivedDate: formatDate(new Date()), receivedTime, items, quantity, photoData: reader.result });
     saveAll();
     renderProofList();
     proofForm.reset();
@@ -449,7 +351,12 @@ document.getElementById('next-week').addEventListener('click', () => {
   renderHistory();
 });
 
+navButtons.forEach((button) => {
+  button.addEventListener('click', () => switchPage(button.dataset.target));
+});
+
 renderWeekHeader();
 renderPendingList();
 renderProofList();
 renderHistory();
+switchPage('dashboard');
