@@ -66,7 +66,10 @@
       </section>
 
       <section class="card page" data-page="schedule" data-section-icon="➕">
-        <h2>Nouvelle cédule</h2>
+        <div class="page-header-inline">
+          <h2>Nouvelle cédule</h2>
+          <button id="open-import-containers" type="button" class="small-action" aria-label="Importer des conteneurs">📋+ Importer</button>
+        </div>
         <form id="schedule-form">
           <div class="grid compact">
             <label>Zone
@@ -97,6 +100,79 @@
             <button id="clear-draft" type="button">🧹 Effacer brouillon</button>
           </div>
         </form>
+        <p class="page-signature">DL.Logistique</p>
+      </section>
+
+      <section class="card page" data-page="import-containers" data-section-icon="📋">
+        <div class="page-header-inline">
+          <h2>Importer des conteneurs</h2>
+          <button id="import-back-to-schedule" type="button" class="small-action">← Retour</button>
+        </div>
+        <p class="hint">Collez une ligne par conteneur. Format minimal: <strong>MUSU1233435 LFD 02/28</strong>.</p>
+        <label>Liste à importer
+          <textarea id="import-text" rows="10" placeholder="MUSU1233435 LFD 02/28&#10;MUSU1234436 - LFD: 03/01"></textarea>
+        </label>
+        <div class="actions wrap">
+          <button id="analyze-import" type="button" class="primary">Analyser</button>
+          <button id="confirm-import" type="button">Importer dans la file</button>
+          <button id="cancel-import" type="button">Annuler / Retour</button>
+        </div>
+        <div id="import-summary" class="hint"></div>
+        <details id="ignored-lines-details">
+          <summary>Ignorées / erreurs</summary>
+          <ul id="ignored-lines-list" class="simple-list"></ul>
+        </details>
+        <p class="page-signature">DL.Logistique</p>
+      </section>
+
+      <section class="card page" data-page="sequential-schedule" data-section-icon="🧭">
+        <div class="page-header-inline">
+          <h2>Cédulage séquentiel</h2>
+          <button id="wizard-back-button" type="button" class="small-action">← Retour</button>
+        </div>
+        <p id="wizard-progress" class="hint"></p>
+        <article id="wizard-current-card" class="container-card"></article>
+        <details>
+          <summary>Corriger conteneur / LFD</summary>
+          <div class="grid compact">
+            <label>Conteneur
+              <input id="wizard-container-correction" type="text" maxlength="16" />
+            </label>
+            <label>LFD (MM/JJ)
+              <input id="wizard-lfd-correction" type="text" placeholder="02/28" maxlength="5" />
+            </label>
+          </div>
+        </details>
+        <form id="wizard-form" class="grid compact">
+          <label>Site
+            <select id="wizard-site" required>
+              <option value="Laval">Laval</option>
+              <option value="Laval2">Laval2</option>
+              <option value="Langelier">Langelier</option>
+              <option value="5995">5995</option>
+            </select>
+          </label>
+          <label>Date
+            <input id="wizard-date" type="date" required />
+          </label>
+          <label>Heure
+            <input id="wizard-time" type="time" required />
+          </label>
+          <label><input id="wizard-apply-next" type="checkbox" checked /> Appliquer ces valeurs aux suivants</label>
+          <div class="actions wrap left">
+            <button id="wizard-add" type="submit" class="primary">Ajouter à la cédule</button>
+            <button id="wizard-skip" type="button">Sauter</button>
+          </div>
+          <p id="wizard-message" class="hint error"></p>
+        </form>
+        <div id="wizard-finished" class="hidden">
+          <p><strong>Tous les conteneurs ont été cédulés.</strong></p>
+          <p id="wizard-finished-summary" class="hint"></p>
+          <div class="actions wrap">
+            <button id="wizard-see-summary" type="button">Voir résumé</button>
+            <button id="wizard-back-to-schedule" type="button" class="primary">Retour à la Cédule</button>
+          </div>
+        </div>
         <p class="page-signature">DL.Logistique</p>
       </section>
 

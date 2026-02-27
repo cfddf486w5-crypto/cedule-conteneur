@@ -84,6 +84,12 @@ h2 { display:flex; align-items:center; gap:.4rem; }
 .page[data-section-icon="➕"] h2::before { content: "➕"; }
 .page[data-section-icon="📸"] h2::before { content: "📸"; }
 .page[data-section-icon="⚙️"] h2::before { content: "⚙️"; }
+.page[data-section-icon="📋"] h2::before { content: "📋"; }
+.page[data-section-icon="🧭"] h2::before { content: "🧭"; }
+.page-header-inline { display: flex; justify-content: space-between; align-items: center; gap: .6rem; }
+.small-action { padding: .35rem .55rem; font-size: .84rem; border-radius: 10px; }
+.simple-list { margin: .5rem 0 0; padding-left: 1rem; }
+.simple-list li { margin-bottom: .35rem; }
 .grid { display: grid; gap: .75rem; }
 .grid.compact { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 .toolbar-panel { display: grid; gap: .6rem; margin-top: .2rem; }

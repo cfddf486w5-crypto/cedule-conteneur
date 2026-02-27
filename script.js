@@ -15,11 +15,40 @@ const appFooter = document.getElementById('app-footer');
 const footerYear = document.getElementById('footer-year');
 const footerYearShort = document.getElementById('footer-year-short');
 
+const importContainersButton = document.getElementById('open-import-containers');
+const importBackButton = document.getElementById('import-back-to-schedule');
+const importTextArea = document.getElementById('import-text');
+const analyzeImportButton = document.getElementById('analyze-import');
+const confirmImportButton = document.getElementById('confirm-import');
+const cancelImportButton = document.getElementById('cancel-import');
+const importSummary = document.getElementById('import-summary');
+const ignoredLinesDetails = document.getElementById('ignored-lines-details');
+const ignoredLinesList = document.getElementById('ignored-lines-list');
+const wizardBackButton = document.getElementById('wizard-back-button');
+const wizardProgress = document.getElementById('wizard-progress');
+const wizardCurrentCard = document.getElementById('wizard-current-card');
+const wizardContainerCorrection = document.getElementById('wizard-container-correction');
+const wizardLfdCorrection = document.getElementById('wizard-lfd-correction');
+const wizardForm = document.getElementById('wizard-form');
+const wizardSite = document.getElementById('wizard-site');
+const wizardDate = document.getElementById('wizard-date');
+const wizardTime = document.getElementById('wizard-time');
+const wizardApplyNext = document.getElementById('wizard-apply-next');
+const wizardSkipButton = document.getElementById('wizard-skip');
+const wizardMessage = document.getElementById('wizard-message');
+const wizardFinished = document.getElementById('wizard-finished');
+const wizardFinishedSummary = document.getElementById('wizard-finished-summary');
+const wizardSeeSummary = document.getElementById('wizard-see-summary');
+const wizardBackToSchedule = document.getElementById('wizard-back-to-schedule');
+
 const storageKey = 'container-schedule-history-v5';
 const proofKey = 'container-schedule-proof-v5';
 const settingsKey = 'container-schedule-settings-v2';
 const uiKey = 'container-ui-v2';
 const draftKey = 'container-draft-v1';
+const queueKey = 'DL_SCHEDULE_IMPORT_QUEUE';
+const scheduleEntriesKey = 'DL_SCHEDULE_ENTRIES';
+const scheduleSettingsKey = 'DL_SCHEDULE_SETTINGS';
 const EXTRA_OPTION_CONFIRM_ARCHIVE = 'option-4';
 const EXTRA_OPTION_REQUIRE_ARCHIVE_NOTE = 'option-55';
 const safeParse = (value, fallback) => { try { return JSON.parse(value); } catch { return fallback; } };
@@ -201,8 +230,14 @@ function renderExtraSettingOptions() {
 }
 
 
-let entries = safeParse(localStorage.getItem(storageKey), []);
+let entries = safeParse(localStorage.getItem(scheduleEntriesKey), null);
+if (!Array.isArray(entries)) entries = safeParse(localStorage.getItem(storageKey), []);
 if (!Array.isArray(entries)) entries = [];
+
+let importQueue = loadQueueFromStorage();
+let importAnalysisResult = { recognized: [], ignored: [] };
+let wizardSessionStats = { scheduled: 0, skipped: 0 };
+
 
 let proofs = safeParse(localStorage.getItem(proofKey), []);
 if (!Array.isArray(proofs)) proofs = [];
@@ -230,6 +265,13 @@ let draft = safeParse(localStorage.getItem(draftKey), {});
 if (!draft || typeof draft !== 'object') draft = {};
 
 
+let schedulePreferences = {
+  lastSite: 'Laval',
+  lastDateISO: formatDate(new Date()),
+  lastTime: '08:00',
+  ...safeParse(localStorage.getItem(scheduleSettingsKey), {}),
+};
+
 let currentWeekStart = getStartOfWeek(getSafeDate(ui.weekStart));
 let alertTimer = null;
 let undoDeletedEntry = null;
@@ -241,12 +283,153 @@ const warehouses = ['Langelier', 'Laval', '5995'];
 
 function saveAll() {
   localStorage.setItem(storageKey, JSON.stringify(entries));
+  localStorage.setItem(scheduleEntriesKey, JSON.stringify(entries));
   localStorage.setItem(proofKey, JSON.stringify(proofs));
   localStorage.setItem(settingsKey, JSON.stringify(settings));
   ui.weekStart = formatDate(currentWeekStart);
   localStorage.setItem(uiKey, JSON.stringify(ui));
 }
 
+
+
+function normalizeDate(value) {
+  if (!value) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const parsed = new Date(value);
+  return isValidDate(parsed) ? formatDate(parsed) : '';
+}
+
+function normalizeTime(value) {
+  if (!value) return '';
+  const cleaned = String(value).trim().toLowerCase();
+  if (/^\d{1,2}h$/.test(cleaned)) {
+    const hour = Math.min(23, Number(cleaned.replace('h', '')));
+    return `${String(hour).padStart(2, '0')}:00`;
+  }
+  if (/^\d{1,2}:\d{2}$/.test(cleaned)) {
+    const [h, m] = cleaned.split(':').map(Number);
+    if (h >= 0 && h <= 23 && m >= 0 && m <= 59) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+  return '';
+}
+
+function parseContainersFromText(text) {
+  const lines = String(text || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const recognized = [];
+  const ignored = [];
+  const queueSet = new Set(loadQueueFromStorage().map((item) => `${item.containerNumber}|${item.lfd}`));
+  const entrySet = new Set(entries.map((entry) => `${String(entry.containerNumber || '').toUpperCase()}|${String(entry.lfd || '').toUpperCase()}`));
+
+  lines.forEach((line, index) => {
+    const containerMatch = line.match(/musu\s*\d+/i);
+    const lfdMatch = line.match(/\blfd\b\D*([0-9]{1,2}\/[0-9]{1,2})/i);
+    if (!containerMatch || !lfdMatch) {
+      ignored.push({ rawLine: line, reason: 'Format non reconnu (MUSU ou LFD manquant).' });
+      return;
+    }
+    const containerNumber = containerMatch[0].replace(/\s+/g, '').toUpperCase();
+    const [month, day] = lfdMatch[1].split('/').map((part) => String(Number(part)).padStart(2, '0'));
+    const lfd = `${month}/${day}`;
+    const dedupeKey = `${containerNumber}|${lfd}`;
+    if (recognized.some((item) => `${item.containerNumber}|${item.lfd}` === dedupeKey) || queueSet.has(dedupeKey) || entrySet.has(dedupeKey)) {
+      ignored.push({ rawLine: line, reason: 'Doublon déjà en file ou cédulé.' });
+      return;
+    }
+    recognized.push({
+      id: crypto.randomUUID(),
+      containerNumber,
+      lfd,
+      rawLine: line,
+      createdAt: new Date().toISOString(),
+      status: 'pending',
+      lineNumber: index + 1,
+    });
+  });
+
+  return { recognized, ignored };
+}
+function loadQueueFromStorage() {
+  const parsed = safeParse(localStorage.getItem(queueKey), []);
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+function saveQueueToStorage(queue) {
+  localStorage.setItem(queueKey, JSON.stringify(queue));
+  importQueue = Array.isArray(queue) ? queue : [];
+}
+
+function addScheduleEntry(entry) {
+  const payload = {
+    id: crypto.randomUUID(),
+    containerNumber: String(entry.containerNumber || '').trim().toUpperCase(),
+    warehouse: String(entry.site || entry.warehouse || '').trim(),
+    date: normalizeDate(entry.dateISO || entry.date),
+    startTime: normalizeTime(entry.timeHHMM || entry.startTime),
+    lfd: String(entry.lfd || '').trim().toUpperCase(),
+    imported: true,
+    archivedAt: null,
+    createdAt: entry.createdAt || new Date().toISOString(),
+    source: 'manual_import',
+  };
+  const validationError = validateConstraints(payload);
+  if (validationError) return { ok: false, error: validationError };
+  entries.push(payload);
+  entries.sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`));
+  saveAll();
+  return { ok: true, entry: payload };
+}
+
+function getPendingQueueItems() {
+  return importQueue.filter((item) => item.status === 'pending');
+}
+
+function renderImportAnalysis() {
+  importSummary.textContent = `Reconnues: ${importAnalysisResult.recognized.length} | Ignorées: ${importAnalysisResult.ignored.length}`;
+  ignoredLinesList.innerHTML = importAnalysisResult.ignored.length
+    ? importAnalysisResult.ignored.map((item) => `<li><strong>${item.rawLine}</strong><br/><small>${item.reason}</small></li>`).join('')
+    : '<li>Aucune ligne ignorée.</li>';
+  ignoredLinesDetails.open = Boolean(importAnalysisResult.ignored.length);
+}
+
+function startSequentialWizard() {
+  wizardSessionStats = { scheduled: 0, skipped: 0 };
+  const pending = getPendingQueueItems();
+  if (!pending.length) {
+    switchPage('schedule');
+    showToast('Aucun conteneur en attente.');
+    return;
+  }
+  wizardSite.value = schedulePreferences.lastSite || 'Laval';
+  wizardDate.value = normalizeDate(schedulePreferences.lastDateISO) || formatDate(new Date());
+  wizardTime.value = normalizeTime(schedulePreferences.lastTime) || '08:00';
+  wizardApplyNext.checked = true;
+  wizardFinished.classList.add('hidden');
+  wizardForm.classList.remove('hidden');
+  wizardMessage.textContent = '';
+  renderWizardStep();
+  switchPage('sequential-schedule');
+}
+
+function renderWizardStep() {
+  const pending = getPendingQueueItems();
+  const total = importQueue.length;
+  const done = importQueue.filter((item) => item.status !== 'pending').length;
+  if (!pending.length) {
+    wizardProgress.textContent = `Progression: ${done} / ${total}`;
+    wizardCurrentCard.innerHTML = 'Aucun conteneur en attente.';
+    wizardForm.classList.add('hidden');
+    wizardFinished.classList.remove('hidden');
+    wizardFinishedSummary.textContent = `Ajoutés: ${wizardSessionStats.scheduled} | Sautés: ${wizardSessionStats.skipped}.`;
+    return;
+  }
+  const current = pending[0];
+  wizardProgress.textContent = `Conteneur ${done + 1} / ${total}`;
+  wizardCurrentCard.innerHTML = `<strong>${current.containerNumber}</strong><br/>LFD ${current.lfd}`;
+  wizardContainerCorrection.value = current.containerNumber;
+  wizardLfdCorrection.value = current.lfd;
+  wizardForm.classList.remove('hidden');
+  wizardFinished.classList.add('hidden');
+}
 
 function showToast(message) {
   toast.textContent = message;
@@ -440,7 +623,7 @@ function renderProofList() {
 function validateConstraints(newEntry) {
   const dayEntries = entries.filter((entry) => entry.warehouse === newEntry.warehouse && entry.date === newEntry.date);
   if ([0, 6].includes(new Date(`${newEntry.date}T00:00:00`).getDay())) return 'La cédule est limitée au lundi-vendredi.';
-  if (newEntry.lfd < newEntry.date) return 'La date LFD doit être >= date de cédule.';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(newEntry.lfd || '')) && newEntry.lfd < newEntry.date) return 'La date LFD doit être >= date de cédule.';
   if (entries.some((e) => e.containerNumber === newEntry.containerNumber && e.date === newEntry.date && e.startTime === newEntry.startTime)) return 'Conteneur déjà cédulé sur ce créneau.';
   if (newEntry.warehouse === 'Langelier') {
     if (!['08:00', '12:00'].includes(newEntry.startTime)) return 'Langelier accepte uniquement 08:00 ou 12:00.';
@@ -587,6 +770,86 @@ settingsForm.addEventListener('submit', (event) => {
   saveAll(); restartAlertLoop(); showToast('Paramètres enregistrés.');
 });
 
+
+importContainersButton.addEventListener('click', () => switchPage('import-containers'));
+importBackButton.addEventListener('click', () => switchPage('schedule'));
+cancelImportButton.addEventListener('click', () => switchPage('schedule'));
+
+analyzeImportButton.addEventListener('click', () => {
+  importAnalysisResult = parseContainersFromText(importTextArea.value);
+  renderImportAnalysis();
+});
+
+confirmImportButton.addEventListener('click', () => {
+  if (!importAnalysisResult.recognized.length) {
+    importAnalysisResult = parseContainersFromText(importTextArea.value);
+    renderImportAnalysis();
+  }
+  if (!importAnalysisResult.recognized.length) return showToast('Aucune ligne valide à importer.');
+  const mergedQueue = [...loadQueueFromStorage(), ...importAnalysisResult.recognized];
+  saveQueueToStorage(mergedQueue);
+  showToast(`${importAnalysisResult.recognized.length} conteneur(s) ajouté(s) à la file.`);
+  startSequentialWizard();
+});
+
+wizardBackButton.addEventListener('click', () => switchPage('import-containers'));
+wizardBackToSchedule.addEventListener('click', () => switchPage('schedule'));
+wizardSeeSummary.addEventListener('click', () => switchPage('week'));
+
+wizardForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const pending = getPendingQueueItems();
+  if (!pending.length) return;
+  const current = pending[0];
+  const correctedContainer = wizardContainerCorrection.value.trim().toUpperCase();
+  const correctedLfd = wizardLfdCorrection.value.trim();
+  const dateISO = normalizeDate(wizardDate.value);
+  const timeHHMM = normalizeTime(wizardTime.value);
+  if (!correctedContainer || !/^MUSU\d+$/i.test(correctedContainer)) return (wizardMessage.textContent = 'Conteneur invalide. Format MUSU1234567.');
+  if (!/^\d{2}\/\d{2}$/.test(correctedLfd)) return (wizardMessage.textContent = 'LFD invalide. Format MM/JJ.');
+  if (!wizardSite.value || !dateISO || !timeHHMM) return (wizardMessage.textContent = 'Merci de remplir Site / Date / Heure.');
+
+  const result = addScheduleEntry({
+    containerNumber: correctedContainer,
+    lfd: correctedLfd,
+    site: wizardSite.value,
+    dateISO,
+    timeHHMM,
+    createdAt: new Date().toISOString(),
+  });
+  if (!result.ok) return (wizardMessage.textContent = result.error);
+
+  current.containerNumber = correctedContainer;
+  current.lfd = correctedLfd;
+  current.status = 'scheduled';
+  current.scheduledAt = new Date().toISOString();
+  current.scheduleEntryId = result.entry.id;
+  saveQueueToStorage(importQueue);
+  wizardMessage.textContent = '';
+  wizardSessionStats.scheduled += 1;
+
+  if (wizardApplyNext.checked) {
+    schedulePreferences.lastSite = wizardSite.value;
+    schedulePreferences.lastDateISO = dateISO;
+    schedulePreferences.lastTime = timeHHMM;
+    localStorage.setItem(scheduleSettingsKey, JSON.stringify(schedulePreferences));
+  }
+
+  renderAll();
+  renderWizardStep();
+});
+
+wizardSkipButton.addEventListener('click', () => {
+  const pending = getPendingQueueItems();
+  if (!pending.length) return;
+  pending[0].status = 'skipped';
+  pending[0].notes = 'Ignoré pendant le cédulage séquentiel.';
+  saveQueueToStorage(importQueue);
+  wizardSessionStats.skipped += 1;
+  wizardMessage.textContent = '';
+  renderWizardStep();
+});
+
 navButtons.forEach((button) => button.addEventListener('click', () => switchPage(button.dataset.target)));
 ['warehouse', 'date'].forEach((id) => document.getElementById(id).addEventListener('change', updateTimeOptions));
 ['search-input', 'sort-mode'].forEach((id) => document.getElementById(id).addEventListener('input', renderWeekView));
@@ -616,7 +879,7 @@ document.getElementById('json-file').addEventListener('change', (event) => {
 });
 document.getElementById('clear-all').addEventListener('click', () => {
   if (!confirm('Confirmer la suppression de toutes les données?')) return;
-  entries = []; proofs = []; undoDeletedEntry = null; document.getElementById('undo-delete').disabled = true;
+  entries = []; proofs = []; undoDeletedEntry = null; saveQueueToStorage([]); document.getElementById('undo-delete').disabled = true;
   saveAll(); renderAll(); showToast('Toutes les données ont été vidées.');
 });
 
@@ -659,6 +922,11 @@ document.body.classList.toggle('dark', ui.dark);
 document.getElementById('theme-toggle').textContent = ui.dark ? '☀️' : '🌙';
 document.getElementById('proof-time').value = nowTime();
 for (const key of ['warehouse', 'date', 'containerNumber', 'lfd']) if (draft[key]) document.getElementById(key).value = draft[key];
+
+importSummary.textContent = 'Reconnues: 0 | Ignorées: 0';
+ignoredLinesList.innerHTML = '<li>Aucune analyse effectuée.</li>';
+ignoredLinesDetails.open = false;
+
 updateTimeOptions();
 if (draft.startTime) {
   const startTimeSelect = document.getElementById('startTime');
