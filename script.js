@@ -344,7 +344,7 @@ function toggleSearchFilters() {
   const filters = document.getElementById('week-filters');
   const toggle = document.getElementById('toggle-search-filters');
   const isCollapsed = filters.classList.toggle('collapsed');
-  toggle.textContent = isCollapsed ? 'Afficher les filtres de recherche' : 'Masquer les filtres de recherche';
+  toggle.textContent = isCollapsed ? '🔎 Afficher les filtres de recherche' : '🔎 Masquer les filtres de recherche';
   toggle.setAttribute('aria-expanded', String(!isCollapsed));
 }
 
