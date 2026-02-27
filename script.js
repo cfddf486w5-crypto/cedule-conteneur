@@ -23,6 +23,7 @@ const draftKey = 'container-draft-v1';
 const safeParse = (value, fallback) => { try { return JSON.parse(value); } catch { return fallback; } };
 const isValidDate = (value) => value instanceof Date && !Number.isNaN(value.getTime());
 const getSafeDate = (value, fallback = new Date()) => {
+  if (value === null || value === undefined || value === '') return fallback;
   const parsed = new Date(value);
   return isValidDate(parsed) ? parsed : fallback;
 };
@@ -334,13 +335,7 @@ function renderSummary() {
 
 function activeFilters(entry) {
   const search = document.getElementById('search-input').value.trim().toUpperCase();
-  const fWarehouse = document.getElementById('filter-warehouse').value;
-  const fStatus = document.getElementById('filter-status').value;
   if (search && !entry.containerNumber.includes(search)) return false;
-  if (fWarehouse !== 'all' && entry.warehouse !== fWarehouse) return false;
-  if (fStatus === 'active' && isArchived(entry)) return false;
-  if (fStatus === 'archived' && !isArchived(entry)) return false;
-  if (fStatus === 'overdue' && !(entry.date < formatDate(new Date()) && !isArchived(entry))) return false;
   return true;
 }
 
@@ -587,7 +582,7 @@ settingsForm.addEventListener('submit', (event) => {
 
 navButtons.forEach((button) => button.addEventListener('click', () => switchPage(button.dataset.target)));
 ['warehouse', 'date'].forEach((id) => document.getElementById(id).addEventListener('change', updateTimeOptions));
-['search-input', 'filter-warehouse', 'filter-status', 'sort-mode'].forEach((id) => document.getElementById(id).addEventListener('input', renderWeekView));
+['search-input', 'sort-mode'].forEach((id) => document.getElementById(id).addEventListener('input', renderWeekView));
 
 document.getElementById('prev-week').addEventListener('click', () => { currentWeekStart.setDate(currentWeekStart.getDate() - 7); saveAll(); renderAll(); });
 document.getElementById('next-week').addEventListener('click', () => { currentWeekStart.setDate(currentWeekStart.getDate() + 7); saveAll(); renderAll(); });
