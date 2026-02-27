@@ -11,9 +11,13 @@
       <header class="top-header">
         <div>
           <h1>Cédule de conteneurs</h1>
-          <p>Vue hebdomadaire du lundi au vendredi, par zone.</p>
+          <p>Planification hebdomadaire du lundi au vendredi, par zone.</p>
+          <p id="last-updated" class="meta"></p>
         </div>
-        <button id="settings-shortcut" class="icon-btn" type="button" aria-label="Paramètres">⚙️</button>
+        <div class="header-actions">
+          <button id="theme-toggle" class="icon-btn" type="button" aria-label="Mode sombre">🌙</button>
+          <button id="settings-shortcut" class="icon-btn" type="button" aria-label="Paramètres">⚙️</button>
+        </div>
       </header>
 
       <section class="card page" data-page="dashboard">
@@ -23,15 +27,52 @@
             <h2 id="week-label">Semaine</h2>
             <p id="week-range"></p>
           </div>
-          <button id="next-week" type="button">Semaine suivante →</button>
+          <div class="week-actions">
+            <button id="today-week" type="button">Aujourd’hui</button>
+            <button id="next-week" type="button">Semaine suivante →</button>
+          </div>
         </div>
+        <div id="kpi-grid" class="kpi-grid"></div>
         <h2>Dashboard zones (graphique lundi à vendredi)</h2>
         <div id="warehouse-summary" class="summary-grid"></div>
       </section>
 
       <section class="card page" data-page="week">
         <h2>Vue de la semaine (lundi à vendredi)</h2>
-        <p class="hint">Chaque conteneur affiche des actions rapides. Une fois archivé, affichage en lecture seule.</p>
+        <div class="toolbar grid compact">
+          <label>Recherche
+            <input type="search" id="search-input" placeholder="Ex: MSMU1231234" />
+          </label>
+          <label>Zone
+            <select id="filter-warehouse">
+              <option value="all">Toutes</option>
+              <option value="Langelier">Langelier</option>
+              <option value="Laval">Laval</option>
+              <option value="5995">5995</option>
+            </select>
+          </label>
+          <label>Statut
+            <select id="filter-status">
+              <option value="all">Tous</option>
+              <option value="active">Actifs</option>
+              <option value="archived">Archivés</option>
+              <option value="overdue">En retard</option>
+            </select>
+          </label>
+          <label>Trier
+            <select id="sort-mode">
+              <option value="time">Heure</option>
+              <option value="container">Conteneur</option>
+              <option value="lfd">LFD</option>
+            </select>
+          </label>
+        </div>
+        <p class="hint">Raccourcis: D dashboard, W semaine, S cédule, P preuve, T paramètres.</p>
+        <div class="actions wrap">
+          <button id="print-week" type="button">Imprimer la semaine</button>
+          <button id="export-schedule" type="button">Exporter cédules CSV</button>
+          <button id="undo-delete" type="button" disabled>Annuler suppression</button>
+        </div>
         <div id="week-view" class="week-grid"></div>
       </section>
 
@@ -53,14 +94,19 @@
               <select id="startTime" required></select>
             </label>
             <label>Numéro de conteneur
-              <input type="text" id="containerNumber" required placeholder="MSMU1231234" />
+              <input type="text" id="containerNumber" required placeholder="MSMU1231234" maxlength="11" />
             </label>
             <label>LFD
               <input type="date" id="lfd" required />
             </label>
           </div>
           <p id="slot-message" class="hint"></p>
-          <div class="actions"><button type="submit" class="primary">Ajouter à la cédule</button></div>
+          <p id="form-message" class="hint error"></p>
+          <div class="actions wrap">
+            <button type="submit" class="primary">Ajouter à la cédule</button>
+            <button id="quick-today" type="button">Date = aujourd’hui</button>
+            <button id="clear-draft" type="button">Effacer brouillon</button>
+          </div>
         </form>
       </section>
 
@@ -70,8 +116,12 @@
           <label>Associer au conteneur<select id="proof-container" required></select></label>
           <label>Photo de réception<input type="file" id="proof-photo" accept="image/*" required /></label>
           <label>Heure de réception<input type="time" id="proof-time" required /></label>
+          <label>Notes réception (optionnel)<textarea id="proof-note" rows="2" placeholder="Ex: palette complète"></textarea></label>
           <button type="submit" class="primary">Archiver</button>
         </form>
+        <div class="actions wrap">
+          <button id="export-proofs" type="button">Exporter preuves CSV</button>
+        </div>
         <ul id="proof-list" class="proof-list"></ul>
       </section>
 
@@ -81,14 +131,21 @@
           <label>Intervalle des alertes (minutes)
             <input type="number" id="alert-interval" min="1" step="1" required />
           </label>
+          <label><input type="checkbox" id="mute-alerts" /> Couper les notifications système</label>
+          <label><input type="checkbox" id="compact-mode" /> Mode compact</label>
+          <label><input type="checkbox" id="reduce-motion" /> Réduire les animations</label>
           <div class="actions left">
             <button type="submit" class="primary">Enregistrer les paramètres</button>
+            <button id="import-json" type="button">Importer JSON</button>
+            <button id="clear-all" type="button" class="danger">Vider toutes les données</button>
           </div>
         </form>
+        <input type="file" id="json-file" accept="application/json" hidden />
         <p class="hint">Les alertes concernent les conteneurs passés (date dépassée) non archivés avec preuve photo.</p>
       </section>
 
-      <div id="alert-box" class="alert-box hidden"></div>
+      <div id="alert-box" class="alert-box hidden" aria-live="assertive"></div>
+      <div id="toast" class="toast hidden" aria-live="polite"></div>
     </main>
 
     <nav class="bottom-nav" aria-label="Navigation des pages">
