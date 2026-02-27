@@ -9,17 +9,23 @@ const proofList = document.getElementById('proof-list');
 const pages = document.querySelectorAll('.page');
 const navButtons = document.querySelectorAll('.bottom-nav button');
 const alertBox = document.getElementById('alert-box');
+const toast = document.getElementById('toast');
 const settingsForm = document.getElementById('settings-form');
-const settingsShortcut = document.getElementById('settings-shortcut');
 
-const storageKey = 'container-schedule-history-v4';
-const proofKey = 'container-schedule-proof-v4';
-const settingsKey = 'container-schedule-settings-v1';
-let entries = JSON.parse(localStorage.getItem(storageKey) || '[]');
-let proofs = JSON.parse(localStorage.getItem(proofKey) || '[]');
-let settings = JSON.parse(localStorage.getItem(settingsKey) || '{"alertIntervalMinutes":60}');
-let currentWeekStart = getStartOfWeek(new Date());
+const storageKey = 'container-schedule-history-v5';
+const proofKey = 'container-schedule-proof-v5';
+const settingsKey = 'container-schedule-settings-v2';
+const uiKey = 'container-ui-v2';
+const draftKey = 'container-draft-v1';
+const safeParse = (value, fallback) => { try { return JSON.parse(value); } catch { return fallback; } };
+let entries = safeParse(localStorage.getItem(storageKey), []);
+let proofs = safeParse(localStorage.getItem(proofKey), []);
+let settings = safeParse(localStorage.getItem(settingsKey), { alertIntervalMinutes: 60, muteAlerts: false, compactMode: false, reduceMotion: false });
+let ui = safeParse(localStorage.getItem(uiKey), { page: 'dashboard', dark: false, weekStart: null });
+let draft = safeParse(localStorage.getItem(draftKey), {});
+let currentWeekStart = ui.weekStart ? new Date(ui.weekStart) : getStartOfWeek(new Date());
 let alertTimer = null;
+let undoDeletedEntry = null;
 
 const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
 const warehouses = ['Langelier', 'Laval', '5995'];
@@ -28,9 +34,20 @@ function saveAll() {
   localStorage.setItem(storageKey, JSON.stringify(entries));
   localStorage.setItem(proofKey, JSON.stringify(proofs));
   localStorage.setItem(settingsKey, JSON.stringify(settings));
+  ui.weekStart = formatDate(currentWeekStart);
+  localStorage.setItem(uiKey, JSON.stringify(ui));
+}
+
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.remove('hidden');
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => toast.classList.add('hidden'), 2200);
 }
 
 function switchPage(pageName) {
+  ui.page = pageName;
+  localStorage.setItem(uiKey, JSON.stringify(ui));
   pages.forEach((page) => page.classList.toggle('active', page.dataset.page === pageName));
   navButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.target === pageName));
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -44,17 +61,10 @@ function getStartOfWeek(date) {
   d.setHours(0, 0, 0, 0);
   return d;
 }
-
-function formatDate(date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function getWeekWindow(referenceDate) {
-  const start = getStartOfWeek(referenceDate);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  return { start, end };
-}
+function formatDate(date) { return date.toISOString().slice(0, 10); }
+function nowTime() { return new Date().toTimeString().slice(0, 5); }
+function isArchived(entry) { return Boolean(entry.archivedAt); }
+function getOverdueEntries() { const today = formatDate(new Date()); return entries.filter((entry) => entry.date < today && !isArchived(entry)); }
 
 function getWeekDates(referenceDate) {
   const start = getStartOfWeek(referenceDate);
@@ -65,20 +75,25 @@ function getWeekDates(referenceDate) {
   });
 }
 
-function isDateInCurrentWeek(dateStr) {
-  const { start, end } = getWeekWindow(currentWeekStart);
-  const d = new Date(`${dateStr}T00:00:00`);
-  return d >= start && d <= end;
-}
-
-function isArchived(entry) {
-  return Boolean(entry.archivedAt);
-}
-
 function renderWeekHeader() {
-  const { start, end } = getWeekWindow(currentWeekStart);
+  const start = getStartOfWeek(currentWeekStart);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
   weekLabel.textContent = `Semaine du ${formatDate(start)}`;
   weekRange.textContent = `${formatDate(start)} au ${formatDate(end)}`;
+}
+
+function updateKpis() {
+  const weekDates = getWeekDates(currentWeekStart);
+  const weekly = entries.filter((e) => weekDates.includes(e.date));
+  const archived = weekly.filter(isArchived).length;
+  const imported = weekly.filter((e) => e.imported).length;
+  const overdue = getOverdueEntries().length;
+  const fillRate = weekly.length ? Math.round((archived / weekly.length) * 100) : 0;
+  document.getElementById('kpi-grid').innerHTML = [
+    ['Total semaine', weekly.length], ['Archivés', archived], ['Importés', imported], ['En retard', overdue], ['Taux archivage', `${fillRate}%`],
+  ].map(([label, value]) => `<article class="kpi"><small>${label}</small><h3>${value}</h3></article>`).join('');
+  document.getElementById('last-updated').textContent = `Dernière mise à jour: ${new Date().toLocaleString('fr-CA')}`;
 }
 
 function updateTimeOptions() {
@@ -88,173 +103,132 @@ function updateTimeOptions() {
   const slotMessage = document.getElementById('slot-message');
   const submitButton = form.querySelector('button[type="submit"]');
   const dayEntries = entries.filter((entry) => entry.warehouse === warehouse && entry.date === date);
-
-  let options = [];
-  if (warehouse === 'Langelier') {
-    const used = dayEntries.map((entry) => entry.startTime);
-    options = ['08:00', '12:00'].filter((slot) => !used.includes(slot));
-    slotMessage.textContent = options.length
-      ? `Langelier: créneaux disponibles ${options.join(' / ')}.`
-      : 'Date complète pour Langelier (08:00 et 12:00 déjà cédulés).';
-    submitButton.disabled = options.length === 0;
-  } else {
-    options = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00'];
-    slotMessage.textContent = '';
-    submitButton.disabled = false;
-  }
-
-  select.innerHTML = '';
-  if (!options.length) {
-    const option = document.createElement('option');
-    option.value = '';
-    option.textContent = 'Aucune heure disponible';
-    select.appendChild(option);
-    return;
-  }
-
-  options.forEach((time) => {
-    const option = document.createElement('option');
-    option.value = time;
-    option.textContent = time;
-    select.appendChild(option);
-  });
+  let options = warehouse === 'Langelier'
+    ? ['08:00', '12:00'].filter((slot) => !dayEntries.map((e) => e.startTime).includes(slot))
+    : ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00'];
+  slotMessage.textContent = warehouse === 'Langelier' ? (options.length ? `Langelier: ${options.join(' / ')}` : 'Date complète pour Langelier.') : '';
+  submitButton.disabled = !options.length;
+  select.innerHTML = options.map((time) => `<option value="${time}">${time}</option>`).join('') || '<option value="">Aucune heure disponible</option>';
 }
 
 function renderSummary() {
   const weekDates = getWeekDates(currentWeekStart);
   summaryElement.innerHTML = '';
-
   warehouses.forEach((name) => {
     const counts = weekDates.map((date) => entries.filter((entry) => entry.warehouse === name && entry.date === date).length);
     const max = Math.max(1, ...counts);
+    const total = counts.reduce((a, b) => a + b, 0);
+    const bars = counts.map((count, i) => `<div class="bar-wrap"><div class="bar" style="height:${Math.max(8, Math.round((count / max) * 120))}px"></div><small>${count}</small><span>${dayNames[i].slice(0, 3)}</span></div>`).join('');
     const card = document.createElement('article');
     card.className = 'summary-item';
-
-    const bars = counts
-      .map((count, index) => {
-        const height = Math.max(8, Math.round((count / max) * 120));
-        return `<div class="bar-wrap"><div class="bar" style="height:${height}px"></div><small>${count}</small><span class="day-label">${dayNames[index].slice(0, 3)}</span></div>`;
-      })
-      .join('');
-
-    card.innerHTML = `<h3>${name}</h3><p>${counts.reduce((a, b) => a + b, 0)} conteneur(s) cette semaine</p><div class="bars">${bars}</div>`;
+    card.innerHTML = `<h3>${name}</h3><p>${total} conteneur(s) | Utilisation ${Math.min(100, total * 10)}%</p><div class="bars">${bars}</div>`;
     summaryElement.appendChild(card);
+  });
+}
+
+function activeFilters(entry) {
+  const search = document.getElementById('search-input').value.trim().toUpperCase();
+  const fWarehouse = document.getElementById('filter-warehouse').value;
+  const fStatus = document.getElementById('filter-status').value;
+  if (search && !entry.containerNumber.includes(search)) return false;
+  if (fWarehouse !== 'all' && entry.warehouse !== fWarehouse) return false;
+  if (fStatus === 'active' && isArchived(entry)) return false;
+  if (fStatus === 'archived' && !isArchived(entry)) return false;
+  if (fStatus === 'overdue' && !(entry.date < formatDate(new Date()) && !isArchived(entry))) return false;
+  return true;
+}
+
+function sortEntries(list) {
+  const mode = document.getElementById('sort-mode').value;
+  return [...list].sort((a, b) => {
+    if (mode === 'container') return a.containerNumber.localeCompare(b.containerNumber);
+    if (mode === 'lfd') return `${a.lfd}${a.startTime}`.localeCompare(`${b.lfd}${b.startTime}`);
+    return `${a.startTime}${a.containerNumber}`.localeCompare(`${b.startTime}${b.containerNumber}`);
   });
 }
 
 function renderWeekView() {
   weekViewElement.innerHTML = '';
   const weekDates = getWeekDates(currentWeekStart);
-
   weekDates.forEach((date, index) => {
-    const dayEntries = entries
-      .filter((entry) => entry.date === date)
-      .sort((a, b) => `${a.startTime}${a.containerNumber}`.localeCompare(`${b.startTime}${b.containerNumber}`));
-
+    const dayEntries = sortEntries(entries.filter((entry) => entry.date === date && activeFilters(entry)));
     const col = document.createElement('div');
     col.className = 'day-column';
     col.innerHTML = `<h3>${dayNames[index]}<br /><small>${date}</small></h3>`;
-
-    if (!dayEntries.length) {
-      col.innerHTML += '<p class="hint">Aucun conteneur.</p>';
-    }
-
+    if (!dayEntries.length) col.innerHTML += '<p class="hint">Aucun conteneur.</p>';
     dayEntries.forEach((entry) => {
+      const overdue = entry.date < formatDate(new Date()) && !isArchived(entry);
       const box = document.createElement('div');
-      box.className = `container-card ${isArchived(entry) ? 'archived' : ''}`;
+      box.className = `container-card ${isArchived(entry) ? 'archived' : ''} ${overdue ? 'overdue' : ''}`;
       box.innerHTML = `<strong>${entry.containerNumber}</strong><br />${entry.warehouse} | ${entry.startTime} | LFD ${entry.lfd}`;
-
+      box.innerHTML += `<div class="badges">${entry.imported ? '<span class="badge ok">Importé</span>' : ''}${isArchived(entry) ? '<span class="badge ok">Archivé</span>' : ''}${overdue ? '<span class="badge warn">Retard</span>' : ''}</div>`;
       if (isArchived(entry)) {
         box.innerHTML += `<div class="readonly-label">Archivé (lecture seule)</div>`;
       } else {
-        const actions = document.createElement('div');
-        actions.className = 'card-actions';
-
-        const editBtn = document.createElement('button');
-        editBtn.className = 'edit';
-        editBtn.textContent = 'Modifier';
-        editBtn.addEventListener('click', () => loadEntryToForm(entry.id));
-
-        const importBtn = document.createElement('button');
-        importBtn.className = 'import-action';
-        importBtn.textContent = entry.imported ? 'Importé ✓' : 'Marquer importé';
-        importBtn.addEventListener('click', () => {
-          entry.imported = !entry.imported;
-          saveAll();
-          renderAll();
+        const actions = document.createElement('div'); actions.className = 'card-actions';
+        actions.innerHTML = `<button data-act="edit">Modifier</button><button data-act="copy">Copier #</button><button data-act="duplicate">Dupliquer</button><button data-act="import">${entry.imported ? 'Retirer import' : 'Marquer importé'}</button><button data-act="archive">Archiver</button><button data-act="delete" class="danger">Supprimer</button>`;
+        actions.addEventListener('click', (event) => {
+          const action = event.target.dataset.act;
+          if (!action) return;
+          if (action === 'edit') loadEntryToForm(entry.id);
+          if (action === 'copy') navigator.clipboard?.writeText(entry.containerNumber).then(() => showToast('Numéro copié.'));
+          if (action === 'duplicate') duplicateEntry(entry);
+          if (action === 'import') { entry.imported = !entry.imported; saveAll(); renderAll(); }
+          if (action === 'archive') { proofContainerSelect.value = entry.id; switchPage('proof'); }
+          if (action === 'delete') removeEntry(entry.id);
         });
-
-        const archiveBtn = document.createElement('button');
-        archiveBtn.className = 'delete';
-        archiveBtn.textContent = 'Archiver';
-        archiveBtn.addEventListener('click', () => {
-          proofContainerSelect.value = entry.id;
-          switchPage('proof');
-        });
-
-        actions.append(editBtn, importBtn, archiveBtn);
         box.appendChild(actions);
       }
-
       col.appendChild(box);
     });
-
     weekViewElement.appendChild(col);
   });
+}
+
+function removeEntry(entryId) {
+  const entry = entries.find((e) => e.id === entryId);
+  if (!entry || !confirm(`Supprimer ${entry.containerNumber} ?`)) return;
+  undoDeletedEntry = { ...entry };
+  document.getElementById('undo-delete').disabled = false;
+  entries = entries.filter((e) => e.id !== entryId);
+  saveAll(); renderAll();
+}
+
+function duplicateEntry(entry) {
+  const copy = { ...entry, id: crypto.randomUUID(), imported: false, archivedAt: null, date: formatDate(new Date()) };
+  const validationError = validateConstraints(copy);
+  if (validationError) return showToast(validationError);
+  entries.push(copy); saveAll(); renderAll(); showToast('Cédule dupliquée pour aujourd’hui.');
 }
 
 function loadEntryToForm(entryId) {
   const entry = entries.find((candidate) => candidate.id === entryId);
   if (!entry || isArchived(entry)) return;
-  document.getElementById('warehouse').value = entry.warehouse;
-  document.getElementById('date').value = entry.date;
+  for (const key of ['warehouse', 'date', 'containerNumber', 'lfd']) document.getElementById(key).value = entry[key];
   updateTimeOptions();
   document.getElementById('startTime').value = entry.startTime;
-  document.getElementById('containerNumber').value = entry.containerNumber;
-  document.getElementById('lfd').value = entry.lfd;
   entries = entries.filter((candidate) => candidate.id !== entry.id);
-  saveAll();
-  renderAll();
-  switchPage('schedule');
+  saveAll(); renderAll(); switchPage('schedule');
 }
 
 function renderProofSelector() {
-  proofContainerSelect.innerHTML = '';
   const activeEntries = entries.filter((entry) => !isArchived(entry));
-
-  if (!activeEntries.length) {
-    const option = document.createElement('option');
-    option.value = '';
-    option.textContent = 'Aucun conteneur à archiver';
-    proofContainerSelect.appendChild(option);
-    return;
-  }
-
-  activeEntries.forEach((entry) => {
-    const option = document.createElement('option');
-    option.value = entry.id;
-    option.textContent = `${entry.containerNumber} (${entry.date} - ${entry.warehouse})`;
-    proofContainerSelect.appendChild(option);
-  });
+  proofContainerSelect.innerHTML = activeEntries.length
+    ? activeEntries.map((entry) => `<option value="${entry.id}">${entry.containerNumber} (${entry.date} - ${entry.warehouse})</option>`).join('')
+    : '<option value="">Aucun conteneur à archiver</option>';
 }
 
 function renderProofList() {
-  proofList.innerHTML = '';
-  if (!proofs.length) {
-    proofList.innerHTML = '<li>Aucune preuve de réception.</li>';
-    return;
-  }
-
-  proofs.forEach((proof) => {
-    const li = document.createElement('li');
-    li.className = 'proof-item';
-    li.innerHTML = `<strong>${proof.containerNumber}</strong> — ${proof.receivedDate} ${proof.receivedTime}<br /><img src="${proof.photoData}" alt="Preuve ${proof.containerNumber}" />`;
-    proofList.appendChild(li);
-  });
+  proofList.innerHTML = proofs.length
+    ? proofs.map((proof) => `<li class="proof-item"><strong>${proof.containerNumber}</strong> — ${proof.receivedDate} ${proof.receivedTime}<br/>${proof.note ? `<em>${proof.note}</em><br/>` : ''}<img src="${proof.photoData}" alt="Preuve ${proof.containerNumber}" /></li>`).join('')
+    : '<li>Aucune preuve de réception.</li>';
 }
 
 function validateConstraints(newEntry) {
   const dayEntries = entries.filter((entry) => entry.warehouse === newEntry.warehouse && entry.date === newEntry.date);
+  if ([0, 6].includes(new Date(`${newEntry.date}T00:00:00`).getDay())) return 'La cédule est limitée au lundi-vendredi.';
+  if (newEntry.lfd < newEntry.date) return 'La date LFD doit être >= date de cédule.';
+  if (entries.some((e) => e.containerNumber === newEntry.containerNumber && e.date === newEntry.date && e.startTime === newEntry.startTime)) return 'Conteneur déjà cédulé sur ce créneau.';
   if (newEntry.warehouse === 'Langelier') {
     if (!['08:00', '12:00'].includes(newEntry.startTime)) return 'Langelier accepte uniquement 08:00 ou 12:00.';
     if (dayEntries.length >= 2) return 'Date complète pour Langelier.';
@@ -263,72 +237,55 @@ function validateConstraints(newEntry) {
   return null;
 }
 
-function getOverdueEntries() {
-  const today = formatDate(new Date());
-  return entries.filter((entry) => entry.date < today && !isArchived(entry));
-}
-
 function notifyOverdue() {
   const overdue = getOverdueEntries();
-  if (!overdue.length) {
-    alertBox.classList.add('hidden');
-    alertBox.textContent = '';
-    return;
-  }
-
+  if (!overdue.length) { alertBox.classList.add('hidden'); alertBox.textContent = ''; return; }
   const list = overdue.map((entry) => `${entry.containerNumber} (${entry.date})`).join(', ');
   alertBox.classList.remove('hidden');
-  alertBox.textContent = `ALERTE: conteneurs non archivés après date prévue: ${list}.`;
-
-  if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification('Conteneurs non archivés', { body: list });
-  }
+  alertBox.textContent = `ALERTE: ${overdue.length} conteneur(s) non archivé(s): ${list}.`;
+  if (!settings.muteAlerts && 'Notification' in window && Notification.permission === 'granted') new Notification('Conteneurs non archivés', { body: list });
 }
 
 function restartAlertLoop() {
   if (alertTimer) clearInterval(alertTimer);
-  const minutes = Math.max(1, Number(settings.alertIntervalMinutes) || 60);
-  alertTimer = setInterval(notifyOverdue, minutes * 60 * 1000);
+  alertTimer = setInterval(notifyOverdue, Math.max(1, Number(settings.alertIntervalMinutes) || 60) * 60 * 1000);
   notifyOverdue();
 }
 
 function renderAll() {
-  renderWeekHeader();
-  renderSummary();
-  renderWeekView();
-  renderProofSelector();
-  renderProofList();
-  updateTimeOptions();
+  renderWeekHeader(); updateKpis(); renderSummary(); renderWeekView(); renderProofSelector(); renderProofList(); updateTimeOptions();
+}
+
+function exportCsv(filename, rows) {
+  const csv = rows.map((r) => r.map((v) => `"${String(v ?? '').replaceAll('"', '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
 }
 
 form.addEventListener('submit', (event) => {
   event.preventDefault();
-  const warehouse = document.getElementById('warehouse').value;
-  const date = document.getElementById('date').value;
-  const startTime = document.getElementById('startTime').value;
-  const containerNumber = document.getElementById('containerNumber').value.trim().toUpperCase();
-  const lfd = document.getElementById('lfd').value;
-
-  if (!warehouse || !date || !startTime || !containerNumber || !lfd) {
-    alert('Merci de remplir tous les champs obligatoires.');
-    return;
-  }
-
-  if (!/^[A-Z]{4}\d{7}$/.test(containerNumber)) {
-    alert('Numéro invalide. Format attendu: MSMU1231234.');
-    return;
-  }
-
-  const newEntry = { id: crypto.randomUUID(), warehouse, date, startTime, containerNumber, lfd, imported: false, archivedAt: null };
-  const validationError = validateConstraints(newEntry);
-  if (validationError) return alert(validationError);
-
-  entries.push(newEntry);
+  const payload = {
+    id: crypto.randomUUID(),
+    warehouse: document.getElementById('warehouse').value,
+    date: document.getElementById('date').value,
+    startTime: document.getElementById('startTime').value,
+    containerNumber: document.getElementById('containerNumber').value.trim().toUpperCase(),
+    lfd: document.getElementById('lfd').value,
+    imported: false,
+    archivedAt: null,
+  };
+  const errorBox = document.getElementById('form-message');
+  if (!payload.warehouse || !payload.date || !payload.startTime || !payload.containerNumber || !payload.lfd) return (errorBox.textContent = 'Merci de remplir tous les champs.');
+  if (!/^[A-Z]{4}\d{7}$/.test(payload.containerNumber)) return (errorBox.textContent = 'Format attendu: MSMU1231234.');
+  const validationError = validateConstraints(payload);
+  if (validationError) return (errorBox.textContent = validationError);
+  errorBox.textContent = '';
+  entries.push(payload);
   entries.sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`));
-  saveAll();
-  form.reset();
-  renderAll();
-  switchPage('week');
+  form.reset(); localStorage.removeItem(draftKey); draft = {};
+  saveAll(); renderAll(); switchPage('week'); showToast('Cédule ajoutée.');
 });
 
 proofForm.addEventListener('submit', (event) => {
@@ -336,19 +293,16 @@ proofForm.addEventListener('submit', (event) => {
   const containerId = proofContainerSelect.value;
   const photoFile = document.getElementById('proof-photo').files[0];
   const receivedTime = document.getElementById('proof-time').value;
-
-  if (!containerId || !photoFile || !receivedTime) return alert('Veuillez remplir tous les champs de preuve.');
-
+  const note = document.getElementById('proof-note').value.trim();
+  if (!containerId || !photoFile || !receivedTime) return showToast('Veuillez remplir les champs de preuve.');
+  if (photoFile.size > 3 * 1024 * 1024) return showToast('Image trop lourde (max 3MB).');
   const entry = entries.find((candidate) => candidate.id === containerId);
-  if (!entry) return alert('Le conteneur sélectionné est introuvable.');
-
+  if (!entry) return showToast('Conteneur introuvable.');
   const reader = new FileReader();
   reader.onload = () => {
     entry.archivedAt = `${formatDate(new Date())} ${receivedTime}`;
-    proofs.unshift({ id: crypto.randomUUID(), containerId, containerNumber: entry.containerNumber, receivedDate: formatDate(new Date()), receivedTime, photoData: reader.result });
-    saveAll();
-    renderAll();
-    proofForm.reset();
+    proofs.unshift({ id: crypto.randomUUID(), containerId, containerNumber: entry.containerNumber, receivedDate: formatDate(new Date()), receivedTime, note, photoData: reader.result });
+    saveAll(); renderAll(); proofForm.reset(); document.getElementById('proof-time').value = nowTime(); showToast('Conteneur archivé.');
   };
   reader.readAsDataURL(photoFile);
 });
@@ -356,36 +310,80 @@ proofForm.addEventListener('submit', (event) => {
 settingsForm.addEventListener('submit', (event) => {
   event.preventDefault();
   settings.alertIntervalMinutes = Number(document.getElementById('alert-interval').value) || 60;
-  saveAll();
-  restartAlertLoop();
-  alert('Paramètres enregistrés.');
+  settings.muteAlerts = document.getElementById('mute-alerts').checked;
+  settings.compactMode = document.getElementById('compact-mode').checked;
+  settings.reduceMotion = document.getElementById('reduce-motion').checked;
+  document.body.classList.toggle('compact', settings.compactMode);
+  document.body.classList.toggle('reduce-motion', settings.reduceMotion);
+  saveAll(); restartAlertLoop(); showToast('Paramètres enregistrés.');
 });
 
-settingsShortcut.addEventListener('click', () => switchPage('settings'));
+navButtons.forEach((button) => button.addEventListener('click', () => switchPage(button.dataset.target)));
+['warehouse', 'date'].forEach((id) => document.getElementById(id).addEventListener('change', updateTimeOptions));
+['search-input', 'filter-warehouse', 'filter-status', 'sort-mode'].forEach((id) => document.getElementById(id).addEventListener('input', renderWeekView));
 
-document.getElementById('warehouse').addEventListener('change', updateTimeOptions);
-document.getElementById('date').addEventListener('change', updateTimeOptions);
-
-document.getElementById('prev-week').addEventListener('click', () => {
-  const start = new Date(currentWeekStart);
-  start.setDate(start.getDate() - 7);
-  currentWeekStart = start;
-  renderAll();
+document.getElementById('prev-week').addEventListener('click', () => { currentWeekStart.setDate(currentWeekStart.getDate() - 7); saveAll(); renderAll(); });
+document.getElementById('next-week').addEventListener('click', () => { currentWeekStart.setDate(currentWeekStart.getDate() + 7); saveAll(); renderAll(); });
+document.getElementById('today-week').addEventListener('click', () => { currentWeekStart = getStartOfWeek(new Date()); saveAll(); renderAll(); });
+document.getElementById('settings-shortcut').addEventListener('click', () => switchPage('settings'));
+document.getElementById('theme-toggle').addEventListener('click', () => { ui.dark = !ui.dark; document.body.classList.toggle('dark', ui.dark); document.getElementById('theme-toggle').textContent = ui.dark ? '☀️' : '🌙'; localStorage.setItem(uiKey, JSON.stringify(ui)); });
+document.getElementById('print-week').addEventListener('click', () => window.print());
+document.getElementById('export-schedule').addEventListener('click', () => exportCsv('cedules.csv', [['Container', 'Zone', 'Date', 'Heure', 'LFD', 'Importe', 'Archive'], ...entries.map((e) => [e.containerNumber, e.warehouse, e.date, e.startTime, e.lfd, e.imported, e.archivedAt || ''])]));
+document.getElementById('export-proofs').addEventListener('click', () => exportCsv('preuves.csv', [['Container', 'Date reception', 'Heure', 'Notes'], ...proofs.map((p) => [p.containerNumber, p.receivedDate, p.receivedTime, p.note || ''])]));
+document.getElementById('quick-today').addEventListener('click', () => { document.getElementById('date').value = formatDate(new Date()); updateTimeOptions(); });
+document.getElementById('clear-draft').addEventListener('click', () => { localStorage.removeItem(draftKey); draft = {}; form.reset(); showToast('Brouillon effacé.'); });
+document.getElementById('undo-delete').addEventListener('click', () => { if (!undoDeletedEntry) return; entries.push(undoDeletedEntry); undoDeletedEntry = null; document.getElementById('undo-delete').disabled = true; saveAll(); renderAll(); });
+document.getElementById('import-json').addEventListener('click', () => document.getElementById('json-file').click());
+document.getElementById('json-file').addEventListener('change', (event) => {
+  const file = event.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const parsed = safeParse(reader.result, null);
+    if (!parsed || !Array.isArray(parsed.entries) || !Array.isArray(parsed.proofs)) return showToast('Fichier JSON invalide.');
+    entries = parsed.entries; proofs = parsed.proofs; saveAll(); renderAll(); showToast('Import JSON complété.');
+  };
+  reader.readAsText(file);
+});
+document.getElementById('clear-all').addEventListener('click', () => {
+  if (!confirm('Confirmer la suppression de toutes les données?')) return;
+  entries = []; proofs = []; undoDeletedEntry = null; document.getElementById('undo-delete').disabled = true;
+  saveAll(); renderAll(); showToast('Toutes les données ont été vidées.');
 });
 
-document.getElementById('next-week').addEventListener('click', () => {
-  const start = new Date(currentWeekStart);
-  start.setDate(start.getDate() + 7);
-  currentWeekStart = start;
-  renderAll();
+document.addEventListener('keydown', (event) => {
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+  const map = { d: 'dashboard', w: 'week', s: 'schedule', p: 'proof', t: 'settings' };
+  const target = map[event.key.toLowerCase()];
+  if (target) switchPage(target);
 });
 
-navButtons.forEach((button) => {
-  button.addEventListener('click', () => switchPage(button.dataset.target));
+form.addEventListener('input', () => {
+  draft = {
+    warehouse: document.getElementById('warehouse').value,
+    date: document.getElementById('date').value,
+    startTime: document.getElementById('startTime').value,
+    containerNumber: document.getElementById('containerNumber').value,
+    lfd: document.getElementById('lfd').value,
+  };
+  localStorage.setItem(draftKey, JSON.stringify(draft));
 });
 
-document.getElementById('alert-interval').value = settings.alertIntervalMinutes;
+proofList.addEventListener('click', (event) => {
+  if (event.target.tagName !== 'IMG') return;
+  window.open(event.target.src, '_blank', 'noopener,noreferrer');
+});
+
 if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+document.getElementById('alert-interval').value = settings.alertIntervalMinutes;
+document.getElementById('mute-alerts').checked = settings.muteAlerts;
+document.getElementById('compact-mode').checked = settings.compactMode;
+document.getElementById('reduce-motion').checked = settings.reduceMotion;
+document.body.classList.toggle('compact', settings.compactMode);
+document.body.classList.toggle('reduce-motion', settings.reduceMotion);
+document.body.classList.toggle('dark', ui.dark);
+document.getElementById('theme-toggle').textContent = ui.dark ? '☀️' : '🌙';
+document.getElementById('proof-time').value = nowTime();
+for (const key of ['warehouse', 'date', 'containerNumber', 'lfd']) if (draft[key]) document.getElementById(key).value = draft[key];
 renderAll();
 restartAlertLoop();
-switchPage('dashboard');
+switchPage(ui.page || 'dashboard');
