@@ -142,6 +142,15 @@ body.dark .container-card.overdue { background: #3a242d; }
 .readonly-label { margin-top:.35rem; color: var(--ok); font-size:.86rem; }
 .hint { opacity:.8; font-size:.88rem; }
 .hint.error { color: var(--danger); min-height: 1.1rem; }
+.page-signature {
+  margin: 1rem 0 0;
+  padding-top: .6rem;
+  border-top: 1px dashed var(--border);
+  text-align: center;
+  font-size: .78rem;
+  letter-spacing: .02em;
+  opacity: .85;
+}
 .csv-import-zone { margin-top: 1rem; border-top: 1px dashed var(--border); padding-top: .85rem; }
 .csv-import-zone h3 { margin: 0 0 .4rem; }
 .csv-preview { margin-top: .5rem; }
