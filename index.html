@@ -10,26 +10,26 @@
     <main class="app">
       <header class="top-header">
         <div>
-          <h1>Cédule de conteneurs</h1>
-          <p>Planification hebdomadaire des conteneurs.</p>
+          <h1>✨ Cédule de conteneurs</h1>
+          <p>Planification hebdomadaire brillante et fluide.</p>
           <p id="last-updated" class="meta"></p>
         </div>
         <div class="header-actions">
           <button id="theme-toggle" class="icon-btn" type="button" aria-label="Mode sombre">🌙</button>
-          <button id="settings-shortcut" class="icon-btn" type="button" aria-label="Paramètres">⚙️</button>
+          <button id="settings-shortcut" class="icon-btn" type="button" aria-label="Paramètres">🛠️</button>
         </div>
       </header>
 
-      <section class="card page" data-page="dashboard">
+      <section class="card page" data-page="dashboard" data-section-icon="📊">
         <div class="week-nav">
-          <button id="prev-week" type="button">← Semaine précédente</button>
+          <button id="prev-week" type="button">⏮️ Semaine précédente</button>
           <div>
             <h2 id="week-label">Semaine</h2>
             <p id="week-range"></p>
           </div>
           <div class="week-actions">
-            <button id="today-week" type="button">Aujourd’hui</button>
-            <button id="next-week" type="button">Semaine suivante →</button>
+            <button id="today-week" type="button">📍 Aujourd’hui</button>
+            <button id="next-week" type="button">Semaine suivante ⏭️</button>
           </div>
         </div>
         <div id="kpi-grid" class="kpi-grid"></div>
@@ -37,10 +37,10 @@
         <div id="warehouse-summary" class="summary-grid"></div>
       </section>
 
-      <section class="card page" data-page="week">
+      <section class="card page" data-page="week" data-section-icon="🗓️">
         <h2>Vue de la semaine</h2>
         <div class="toolbar-panel">
-          <button id="toggle-search-filters" class="toolbar-toggle" type="button" aria-expanded="true" aria-controls="week-filters">Masquer les filtres de recherche</button>
+          <button id="toggle-search-filters" class="toolbar-toggle" type="button" aria-expanded="true" aria-controls="week-filters">🔎 Masquer les filtres de recherche</button>
           <div id="week-filters" class="toolbar grid compact">
             <label>Recherche
               <input type="search" id="search-input" placeholder="Ex: MSMU1231234" />
@@ -56,14 +56,14 @@
         </div>
         <p class="hint">Raccourcis: D dashboard, W semaine, S cédule, P preuve, T paramètres.</p>
         <div class="actions wrap">
-          <button id="print-week" type="button">Imprimer la semaine</button>
-          <button id="export-schedule" type="button">Exporter cédules CSV</button>
-          <button id="undo-delete" type="button" disabled>Annuler suppression</button>
+          <button id="print-week" type="button">🖨️ Imprimer la semaine</button>
+          <button id="export-schedule" type="button">📤 Exporter cédules CSV</button>
+          <button id="undo-delete" type="button" disabled>↩️ Annuler suppression</button>
         </div>
         <div id="week-view" class="week-grid"></div>
       </section>
 
-      <section class="card page" data-page="schedule">
+      <section class="card page" data-page="schedule" data-section-icon="➕">
         <h2>Nouvelle cédule</h2>
         <form id="schedule-form">
           <div class="grid compact">
@@ -90,29 +90,29 @@
           <p id="slot-message" class="hint"></p>
           <p id="form-message" class="hint error"></p>
           <div class="actions wrap">
-            <button type="submit" class="primary">Ajouter à la cédule</button>
-            <button id="quick-today" type="button">Date = aujourd’hui</button>
-            <button id="clear-draft" type="button">Effacer brouillon</button>
+            <button type="submit" class="primary">🚀 Ajouter à la cédule</button>
+            <button id="quick-today" type="button">📅 Date = aujourd’hui</button>
+            <button id="clear-draft" type="button">🧹 Effacer brouillon</button>
           </div>
         </form>
       </section>
 
-      <section class="card page" data-page="proof">
+      <section class="card page" data-page="proof" data-section-icon="📸">
         <h2>Archivage avec preuve</h2>
         <form id="proof-form" class="proof-form">
           <label>Associer au conteneur<select id="proof-container" required></select></label>
           <label>Photo de réception<input type="file" id="proof-photo" accept="image/*" required /></label>
           <label>Heure de réception<input type="time" id="proof-time" required /></label>
           <label>Notes réception (optionnel)<textarea id="proof-note" rows="2" placeholder="Ex: palette complète"></textarea></label>
-          <button type="submit" class="primary">Archiver</button>
+          <button type="submit" class="primary">🗃️ Archiver</button>
         </form>
         <div class="actions wrap">
-          <button id="export-proofs" type="button">Exporter preuves CSV</button>
+          <button id="export-proofs" type="button">📦 Exporter preuves CSV</button>
         </div>
         <ul id="proof-list" class="proof-list"></ul>
       </section>
 
-      <section class="card page" data-page="settings">
+      <section class="card page" data-page="settings" data-section-icon="⚙️">
         <h2>Paramètres d’alertes</h2>
         <form id="settings-form" class="grid compact">
           <label>Intervalle des alertes (minutes)
@@ -127,10 +127,10 @@
             <legend>Options avancées (<span id="extra-settings-count">0</span> options)</legend>
             <div id="extra-settings-options" class="settings-options-grid"></div>
           </fieldset>
-          <div class="actions left">
-            <button type="submit" class="primary">Enregistrer les paramètres</button>
-            <button id="import-json" type="button">Importer JSON</button>
-            <button id="clear-all" type="button" class="danger">Vider toutes les données</button>
+          <div class="actions left wrap">
+            <button type="submit" class="primary">💾 Enregistrer les paramètres</button>
+            <button id="import-json" type="button">📥 Importer JSON</button>
+            <button id="clear-all" type="button" class="danger">🗑️ Vider toutes les données</button>
           </div>
         </form>
         <input type="file" id="json-file" accept="application/json" hidden />
@@ -147,11 +147,11 @@
     </main>
 
     <nav class="bottom-nav" aria-label="Navigation des pages">
-      <button type="button" data-target="dashboard">Dashboard</button>
-      <button type="button" data-target="week">Semaine</button>
-      <button type="button" data-target="schedule">Cédule</button>
-      <button type="button" data-target="proof">Réception</button>
-      <button type="button" data-target="settings">Paramètres</button>
+      <button type="button" data-target="dashboard">📊 Dashboard</button>
+      <button type="button" data-target="week">🗓️ Semaine</button>
+      <button type="button" data-target="schedule">➕ Cédule</button>
+      <button type="button" data-target="proof">📸 Réception</button>
+      <button type="button" data-target="settings">⚙️ Paramètres</button>
     </nav>
 
     <script src="script.js" defer></script>
