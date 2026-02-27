@@ -10,6 +10,7 @@ Application front-end HTML/CSS/JS pour planifier, suivre et archiver des contene
 - Import JSON des données locales
 - Suppression avec annulation
 - Mode sombre, mode compact, réduction animations
+- Sélecteur d’affichage concret: Auto / iPhone / PC
 - Sauvegarde automatique du brouillon de formulaire
 - Raccourcis clavier de navigation
 - Impression rapide de la vue semaine
