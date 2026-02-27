@@ -220,7 +220,6 @@ let ui = {
   page: 'dashboard',
   dark: false,
   weekStart: null,
-  displayMode: 'auto',
   ...safeParse(localStorage.getItem(uiKey), {}),
 };
 
@@ -244,15 +243,6 @@ function saveAll() {
   localStorage.setItem(uiKey, JSON.stringify(ui));
 }
 
-
-function applyDisplayMode() {
-  const mode = ['auto', 'iphone', 'pc'].includes(ui.displayMode) ? ui.displayMode : 'auto';
-  ui.displayMode = mode;
-  document.body.classList.toggle('view-iphone', mode === 'iphone');
-  document.body.classList.toggle('view-pc', mode === 'pc');
-  const select = document.getElementById('display-mode');
-  if (select) select.value = mode;
-}
 
 function showToast(message) {
   toast.textContent = message;
@@ -605,12 +595,6 @@ document.getElementById('today-week').addEventListener('click', () => { currentW
 document.getElementById('settings-shortcut').addEventListener('click', () => switchPage('settings'));
 document.getElementById('toggle-search-filters').addEventListener('click', toggleSearchFilters);
 document.getElementById('theme-toggle').addEventListener('click', () => { ui.dark = !ui.dark; document.body.classList.toggle('dark', ui.dark); document.getElementById('theme-toggle').textContent = ui.dark ? '☀️' : '🌙'; localStorage.setItem(uiKey, JSON.stringify(ui)); });
-document.getElementById('display-mode').addEventListener('change', (event) => {
-  ui.displayMode = event.target.value;
-  applyDisplayMode();
-  localStorage.setItem(uiKey, JSON.stringify(ui));
-  showToast(`Affichage ${ui.displayMode === 'iphone' ? 'iPhone' : ui.displayMode === 'pc' ? 'PC' : 'automatique'} activé.`);
-});
 document.getElementById('print-week').addEventListener('click', () => window.print());
 document.getElementById('export-schedule').addEventListener('click', () => exportCsv('cedules.csv', [['Container', 'Zone', 'Date', 'Heure', 'LFD', 'Importe', 'Archive'], ...entries.map((e) => [e.containerNumber, e.warehouse, e.date, e.startTime, e.lfd, e.imported, e.archivedAt || ''])]));
 document.getElementById('export-proofs').addEventListener('click', () => exportCsv('preuves.csv', [['Container', 'Date reception', 'Heure', 'Notes'], ...proofs.map((p) => [p.containerNumber, p.receivedDate, p.receivedTime, p.note || ''])]));
@@ -671,7 +655,6 @@ updateFooterYear();
 applyFooterPreferences();
 document.body.classList.toggle('dark', ui.dark);
 document.getElementById('theme-toggle').textContent = ui.dark ? '☀️' : '🌙';
-applyDisplayMode();
 document.getElementById('proof-time').value = nowTime();
 for (const key of ['warehouse', 'date', 'containerNumber', 'lfd']) if (draft[key]) document.getElementById(key).value = draft[key];
 renderAll();
