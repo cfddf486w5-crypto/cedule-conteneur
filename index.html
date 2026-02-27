@@ -10,54 +10,106 @@
     <main class="app">
       <header>
         <h1>Cédule de conteneurs</h1>
-        <p>Planifiez des mouvements de conteneurs et partagez les mises à jour par e-mail.</p>
+        <p>
+          Planification hebdomadaire (Langelier, Laval, 5995), gestion des retards LFD,
+          import de demandes par e-mail et preuve de réception.
+        </p>
       </header>
 
+      <section class="card nav-card">
+        <div class="week-nav">
+          <button id="prev-week" type="button">← Semaine précédente</button>
+          <div>
+            <h2 id="week-label">Semaine</h2>
+            <p id="week-range"></p>
+          </div>
+          <button id="next-week" type="button">Semaine suivante →</button>
+        </div>
+      </section>
+
+      <section class="card" id="dashboard-card">
+        <h2>Dashboard entrepôts (semaine affichée)</h2>
+        <div id="warehouse-summary" class="summary-grid"></div>
+      </section>
+
       <section class="card">
-        <h2>Nouvelle entrée</h2>
+        <h2>Importer la liste d’un e-mail (conteneurs à placer)</h2>
+        <p class="hint">
+          Format suggéré (1 ligne = 1 conteneur): <strong>CONT123;2026-02-15;2;20FT;ITEM-A,ITEM-B;120</strong>
+          (Numéro;LFD;Porte/position;Type;Items;Qté)
+        </p>
+        <textarea id="email-import" rows="5" placeholder="COLLER LE CONTENU DE L'E-MAIL ICI..."></textarea>
+        <div class="actions left">
+          <button id="import-email" type="button" class="email">Intégrer dans l’app</button>
+        </div>
+        <h3>Liste en attente de placement</h3>
+        <ul id="pending-list" class="history"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Nouvelle cédule</h2>
         <form id="schedule-form">
           <div class="grid">
+            <label>
+              Entrepôt
+              <select id="warehouse" required>
+                <option value="Langelier">Langelier</option>
+                <option value="Laval">Laval</option>
+                <option value="5995">5995</option>
+              </select>
+            </label>
+
             <label>
               Date
               <input type="date" id="date" required />
             </label>
 
             <label>
-              Heure (plage)
-              <div class="time-range">
-                <input type="time" id="startTime" required />
-                <span>à</span>
-                <input type="time" id="endTime" required />
-              </div>
+              Heure de cédule
+              <input type="time" id="startTime" required />
             </label>
 
-            <label class="full-width">
+            <label>
               Numéro de conteneur
-              <input
-                type="text"
-                id="containerNumber"
-                placeholder="Ex: CMAU1234567"
-                required
-              />
+              <input type="text" id="containerNumber" placeholder="Ex: CMAU1234567" required />
+            </label>
+
+            <label>
+              Type
+              <select id="containerType">
+                <option value="20FT">20FT</option>
+                <option value="40FT">40FT</option>
+              </select>
+            </label>
+
+            <label>
+              LFD (Last Free Day)
+              <input type="date" id="lfd" required />
+            </label>
+
+            <label>
+              Porte / reculage
+              <input type="text" id="door" placeholder="Ex: Dock 2" required />
+            </label>
+
+            <label>
+              E-mail destinataire
+              <input type="email" id="email" placeholder="exploitation@entreprise.com" required />
+            </label>
+
+            <label>
+              Items
+              <input type="text" id="items" placeholder="Ex: ITEM-A, ITEM-B" />
+            </label>
+
+            <label>
+              Quantité totale
+              <input type="number" id="quantity" min="0" step="1" placeholder="Ex: 120" />
             </label>
 
             <label class="full-width">
               Notes / historique
-              <textarea
-                id="notes"
-                rows="3"
-                placeholder="Ex: Chargement quai 4, confirmer chauffeur..."
-              ></textarea>
-            </label>
-
-            <label class="full-width">
-              E-mail destinataire
-              <input
-                type="email"
-                id="email"
-                placeholder="exploitation@entreprise.com"
-                required
-              />
+              <textarea id="notes" rows="3" placeholder="Ex: Chauffeur confirmé, reculage à la porte 2"></textarea>
             </label>
           </div>
 
@@ -68,8 +120,36 @@
       </section>
 
       <section class="card">
-        <h2>Historique</h2>
+        <h2>Cédules de la semaine</h2>
         <ul id="history" class="history"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Sous-page: preuve de réception</h2>
+        <form id="proof-form" class="proof-form">
+          <label>
+            Associer au conteneur
+            <select id="proof-container" required></select>
+          </label>
+          <label>
+            Photo du bon
+            <input type="file" id="proof-photo" accept="image/*" required />
+          </label>
+          <label>
+            Heure de réception
+            <input type="time" id="proof-time" required />
+          </label>
+          <label>
+            Items reçus
+            <input type="text" id="proof-items" placeholder="Ex: ITEM-A, ITEM-B" required />
+          </label>
+          <label>
+            Qté reçue
+            <input type="number" id="proof-qty" min="0" step="1" required />
+          </label>
+          <button type="submit" class="primary">Archiver la preuve</button>
+        </form>
+        <ul id="proof-list" class="proof-list"></ul>
       </section>
     </main>
 

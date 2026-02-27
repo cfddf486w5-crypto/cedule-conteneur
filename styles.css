@@ -6,6 +6,8 @@
   --accent: #0078d4;
   --accent-dark: #005a9e;
   --danger: #c0392b;
+  --warning-bg: #ffe5e5;
+  --warning-border: #ff9c9c;
   --border: #d5deea;
 }
 
@@ -21,7 +23,7 @@ body {
 }
 
 .app {
-  max-width: 900px;
+  max-width: 1100px;
   margin: 2rem auto;
   padding: 0 1rem 2rem;
 }
@@ -44,7 +46,39 @@ header p {
   box-shadow: 0 8px 24px rgba(11, 74, 130, 0.08);
 }
 
-.grid {
+.week-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.week-nav h2,
+.week-nav p {
+  margin: 0;
+  text-align: center;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.8rem;
+}
+
+.summary-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.8rem;
+  background: #fbfdff;
+}
+
+.summary-item h3,
+.summary-item p {
+  margin: 0.2rem 0;
+}
+
+.grid,
+.proof-form {
   display: grid;
   gap: 0.8rem;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -63,27 +97,32 @@ label {
 
 input,
 textarea,
+select,
 button {
   font: inherit;
 }
 
 input,
-textarea {
+textarea,
+select {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.65rem 0.75rem;
 }
 
-.time-range {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.hint {
+  font-size: 0.9rem;
+  opacity: 0.85;
 }
 
 .actions {
   margin-top: 1rem;
   display: flex;
   justify-content: flex-end;
+}
+
+.actions.left {
+  justify-content: flex-start;
 }
 
 button {
@@ -115,7 +154,8 @@ button.delete {
   color: white;
 }
 
-.history {
+.history,
+.proof-list {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -133,18 +173,38 @@ button.delete {
   gap: 0.7rem;
 }
 
+.history-item.late {
+  background: var(--warning-bg);
+  border-color: var(--warning-border);
+}
+
 .item-actions {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
 
-@media (max-width: 600px) {
+.proof-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.8rem;
+}
+
+.proof-item img {
+  margin-top: 0.5rem;
+  width: min(280px, 100%);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 700px) {
   .app {
     margin-top: 1rem;
   }
 
+  .week-nav,
   .history-item {
     flex-direction: column;
+    align-items: flex-start;
   }
 }
