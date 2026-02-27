@@ -652,6 +652,11 @@ document.body.classList.toggle('dark', ui.dark);
 document.getElementById('theme-toggle').textContent = ui.dark ? '☀️' : '🌙';
 document.getElementById('proof-time').value = nowTime();
 for (const key of ['warehouse', 'date', 'containerNumber', 'lfd']) if (draft[key]) document.getElementById(key).value = draft[key];
+updateTimeOptions();
+if (draft.startTime) {
+  const startTimeSelect = document.getElementById('startTime');
+  if (Array.from(startTimeSelect.options).some((option) => option.value === draft.startTime)) startTimeSelect.value = draft.startTime;
+}
 renderAll();
 restartAlertLoop();
 switchPage(ui.page || 'dashboard');
