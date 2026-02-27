@@ -14,16 +14,12 @@ const settingsForm = document.getElementById('settings-form');
 const appFooter = document.getElementById('app-footer');
 const footerYear = document.getElementById('footer-year');
 const footerYearShort = document.getElementById('footer-year-short');
-const productsCsvInput = document.getElementById('products-csv-file');
-const productsCsvMessage = document.getElementById('products-csv-message');
-const productsPreview = document.getElementById('products-preview');
 
 const storageKey = 'container-schedule-history-v5';
 const proofKey = 'container-schedule-proof-v5';
 const settingsKey = 'container-schedule-settings-v2';
 const uiKey = 'container-ui-v2';
 const draftKey = 'container-draft-v1';
-const productsKey = 'container-products-v1';
 const safeParse = (value, fallback) => { try { return JSON.parse(value); } catch { return fallback; } };
 const isValidDate = (value) => value instanceof Date && !Number.isNaN(value.getTime());
 const getSafeDate = (value, fallback = new Date()) => {
@@ -231,8 +227,6 @@ let ui = {
 let draft = safeParse(localStorage.getItem(draftKey), {});
 if (!draft || typeof draft !== 'object') draft = {};
 
-let productRows = safeParse(localStorage.getItem(productsKey), []);
-if (!Array.isArray(productRows)) productRows = [];
 
 let currentWeekStart = getStartOfWeek(getSafeDate(ui.weekStart));
 let alertTimer = null;
@@ -249,7 +243,6 @@ function saveAll() {
   localStorage.setItem(settingsKey, JSON.stringify(settings));
   ui.weekStart = formatDate(currentWeekStart);
   localStorage.setItem(uiKey, JSON.stringify(ui));
-  localStorage.setItem(productsKey, JSON.stringify(productRows));
 }
 
 
@@ -508,87 +501,6 @@ function updateLayoutOffsets() {
 }
 
 
-function normalizeHeader(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
-
-function parseCsvLine(line, separator) {
-  const values = [];
-  let current = '';
-  let inQuotes = false;
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    if (char === '"') {
-      if (inQuotes && line[index + 1] === '"') {
-        current += '"';
-        index += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-      continue;
-    }
-    if (char === separator && !inQuotes) {
-      values.push(current.trim());
-      current = '';
-      continue;
-    }
-    current += char;
-  }
-  values.push(current.trim());
-  return values;
-}
-
-function parseProductCsv(text) {
-  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  if (!lines.length) return { error: 'Le CSV est vide.' };
-
-  const firstLine = lines[0];
-  const separator = [';', ',', '\t']
-    .map((candidate) => ({ candidate, count: firstLine.split(candidate).length }))
-    .sort((a, b) => b.count - a.count)[0].candidate;
-
-  const headers = parseCsvLine(firstLine, separator).map(normalizeHeader);
-  const barcodeIndex = headers.findIndex((header) => ['code barre', 'codebarre', 'barcode', 'ean', 'upc'].includes(header));
-  const productIndex = headers.findIndex((header) => ['numero de produit', 'numero produit', 'produit', 'product number', 'product'].includes(header));
-
-  if (barcodeIndex < 0 || productIndex < 0) {
-    return { error: 'Colonnes introuvables. Utilisez: code barre, numéro de produit.' };
-  }
-
-  const rows = lines.slice(1).map((line) => parseCsvLine(line, separator)).map((values, index) => ({
-    line: index + 2,
-    barcode: String(values[barcodeIndex] || '').trim(),
-    productNumber: String(values[productIndex] || '').trim(),
-  })).filter((row) => row.barcode || row.productNumber);
-
-  const validRows = rows.filter((row) => row.barcode && row.productNumber);
-  const skippedRows = rows.length - validRows.length;
-
-  return { rows: validRows, skippedRows };
-}
-
-function renderProductRows() {
-  if (!productsPreview) return;
-  if (!productRows.length) {
-    productsPreview.innerHTML = '<p class="csv-preview-empty">Aucun produit importé.</p>';
-    return;
-  }
-  const previewRows = productRows.slice(0, 8).map((row) => `<tr><td>${row.barcode}</td><td>${row.productNumber}</td></tr>`).join('');
-  const moreCount = productRows.length - 8;
-  productsPreview.innerHTML = `
-    <table>
-      <thead><tr><th>Code barre</th><th>Numéro de produit</th></tr></thead>
-      <tbody>${previewRows}</tbody>
-    </table>
-    <p class="hint">${moreCount > 0 ? `+ ${moreCount} autre(s) ligne(s) importée(s).` : 'Import complet affiché.'}</p>
-  `;
-}
-
 function restartAlertLoop() {
   if (alertTimer) clearInterval(alertTimer);
   alertTimer = setInterval(notifyOverdue, Math.max(1, Number(settings.alertIntervalMinutes) || 60) * 60 * 1000);
@@ -685,33 +597,6 @@ document.getElementById('export-schedule').addEventListener('click', () => expor
 document.getElementById('export-proofs').addEventListener('click', () => exportCsv('preuves.csv', [['Container', 'Date reception', 'Heure', 'Notes'], ...proofs.map((p) => [p.containerNumber, p.receivedDate, p.receivedTime, p.note || ''])]));
 document.getElementById('quick-today').addEventListener('click', () => { document.getElementById('date').value = formatDate(new Date()); updateTimeOptions(); });
 document.getElementById('clear-draft').addEventListener('click', () => { localStorage.removeItem(draftKey); draft = {}; form.reset(); showToast('Brouillon effacé.'); });
-document.getElementById('import-products-csv').addEventListener('click', () => productsCsvInput.click());
-document.getElementById('clear-products-csv').addEventListener('click', () => {
-  productRows = [];
-  if (productsCsvMessage) productsCsvMessage.textContent = 'Liste produits vidée.';
-  saveAll();
-  renderProductRows();
-});
-productsCsvInput.addEventListener('change', (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    const parsed = parseProductCsv(String(reader.result || ''));
-    if (parsed.error) {
-      if (productsCsvMessage) productsCsvMessage.textContent = parsed.error;
-      showToast('Import CSV refusé.');
-      return;
-    }
-    productRows = parsed.rows;
-    saveAll();
-    renderProductRows();
-    if (productsCsvMessage) productsCsvMessage.textContent = `Import CSV réussi: ${parsed.rows.length} ligne(s) valide(s), ${parsed.skippedRows} ignorée(s).`;
-    showToast('CSV produits importé.');
-  };
-  reader.readAsText(file);
-  event.target.value = '';
-});
 document.getElementById('undo-delete').addEventListener('click', () => { if (!undoDeletedEntry) return; entries.push(undoDeletedEntry); undoDeletedEntry = null; document.getElementById('undo-delete').disabled = true; saveAll(); renderAll(); });
 document.getElementById('import-json').addEventListener('click', () => document.getElementById('json-file').click());
 document.getElementById('json-file').addEventListener('change', (event) => {
@@ -775,7 +660,6 @@ if (draft.startTime) {
   if (Array.from(startTimeSelect.options).some((option) => option.value === draft.startTime)) startTimeSelect.value = draft.startTime;
 }
 renderAll();
-renderProductRows();
 restartAlertLoop();
 switchPage(ui.page || 'dashboard');
 window.addEventListener('resize', updateLayoutOffsets);

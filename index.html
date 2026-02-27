@@ -97,16 +97,6 @@
             <button id="clear-draft" type="button">🧹 Effacer brouillon</button>
           </div>
         </form>
-        <section class="csv-import-zone" aria-labelledby="csv-import-title">
-          <h3 id="csv-import-title">Intégration CSV (code barre + numéro de produit)</h3>
-          <p class="hint">Colonnes acceptées (avec ou sans accents): <strong>code barre</strong> et <strong>numéro de produit</strong>.</p>
-          <div class="actions wrap">
-            <button id="import-products-csv" type="button">📥 Importer CSV produits</button>
-            <button id="clear-products-csv" type="button" class="danger">🧹 Vider la liste produits</button>
-          </div>
-          <p id="products-csv-message" class="hint"></p>
-          <div id="products-preview" class="csv-preview"></div>
-        </section>
         <p class="page-signature">DL.Logistique</p>
       </section>
 
@@ -170,6 +160,5 @@
     </nav>
 
     <script src="script.js" defer></script>
-    <input type="file" id="products-csv-file" accept=".csv,text/csv" hidden />
   </body>
 </html>
