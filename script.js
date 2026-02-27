@@ -844,7 +844,7 @@ wizardForm.addEventListener('submit', (event) => {
   const correctedLfd = wizardLfdCorrection.value.trim();
   const dateISO = normalizeDate(wizardDate.value);
   const timeHHMM = normalizeTime(wizardTime.value);
-  if (!correctedContainer || !/^MUSU\d+$/i.test(correctedContainer)) return (wizardMessage.textContent = 'Conteneur invalide. Format MUSU1234567.');
+  if (!correctedContainer || !/^[A-Z]{4}\d{7}$/i.test(correctedContainer)) return (wizardMessage.textContent = 'Conteneur invalide. Format AAAA1234567.');
   if (!/^\d{2}\/\d{2}$/.test(correctedLfd)) return (wizardMessage.textContent = 'LFD invalide. Format MM/JJ.');
   if (!wizardSite.value || !dateISO || !timeHHMM) return (wizardMessage.textContent = 'Merci de remplir Site / Date / Heure.');
 
