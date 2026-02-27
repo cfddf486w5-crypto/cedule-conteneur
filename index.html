@@ -137,6 +137,8 @@
           <label><input type="checkbox" id="mute-alerts" /> Couper les notifications système</label>
           <label><input type="checkbox" id="compact-mode" /> Mode compact</label>
           <label><input type="checkbox" id="reduce-motion" /> Réduire les animations</label>
+          <label><input type="checkbox" id="footer-sticky" /> Footer fixe en bas (sticky)</label>
+          <label><input type="checkbox" id="footer-short" /> Footer court quand l’espace est restreint</label>
           <fieldset class="settings-options">
             <legend>Options avancées (50 options)</legend>
             <div id="extra-settings-options" class="settings-options-grid"></div>
@@ -150,6 +152,11 @@
         <input type="file" id="json-file" accept="application/json" hidden />
         <p class="hint">Les alertes concernent les conteneurs passés (date dépassée) non archivés avec preuve photo.</p>
       </section>
+
+      <footer id="app-footer" class="app-footer" role="contentinfo" aria-live="polite">
+        <span class="footer-text footer-text-full">DL.Logistique © <span id="footer-year"></span></span>
+        <span class="footer-text footer-text-short" aria-hidden="true">DL.Log © <span id="footer-year-short"></span></span>
+      </footer>
 
       <div id="alert-box" class="alert-box hidden" aria-live="assertive"></div>
       <div id="toast" class="toast hidden" aria-live="polite"></div>

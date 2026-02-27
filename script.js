@@ -11,6 +11,9 @@ const navButtons = document.querySelectorAll('.bottom-nav button');
 const alertBox = document.getElementById('alert-box');
 const toast = document.getElementById('toast');
 const settingsForm = document.getElementById('settings-form');
+const appFooter = document.getElementById('app-footer');
+const footerYear = document.getElementById('footer-year');
+const footerYearShort = document.getElementById('footer-year-short');
 
 const storageKey = 'container-schedule-history-v5';
 const proofKey = 'container-schedule-proof-v5';
@@ -108,6 +111,8 @@ let settings = {
   muteAlerts: false,
   compactMode: false,
   reduceMotion: false,
+  footerSticky: false,
+  footerShort: false,
   extraOptions: {},
   ...safeParse(localStorage.getItem(settingsKey), {}),
 };
@@ -357,6 +362,49 @@ function notifyOverdue() {
   if (!settings.muteAlerts && 'Notification' in window && Notification.permission === 'granted') new Notification('Conteneurs non archivés', { body: list });
 }
 
+
+function updateFooterYear() {
+  const year = String(new Date().getFullYear());
+  if (footerYear) footerYear.textContent = year;
+  if (footerYearShort) footerYearShort.textContent = year;
+}
+
+function getVisibleHeight(element) {
+  if (!element) return 0;
+  const styles = window.getComputedStyle(element);
+  if (styles.display === 'none' || styles.visibility === 'hidden') return 0;
+  return Math.ceil(element.getBoundingClientRect().height);
+}
+
+function getFixedBottomNav() {
+  const selectors = ['.bottom-nav', 'nav[aria-label="bottom"]', 'nav[aria-label*="bottom" i]', 'nav[aria-label*="bas" i]'];
+  return selectors
+    .map((selector) => document.querySelector(selector))
+    .find((element) => {
+      if (!element) return false;
+      const styles = window.getComputedStyle(element);
+      return ['fixed', 'sticky'].includes(styles.position);
+    }) || null;
+}
+
+function applyFooterPreferences() {
+  document.body.classList.toggle('footer-short', settings.footerShort);
+  appFooter?.classList.toggle('is-sticky', settings.footerSticky);
+  if (appFooter && !settings.footerSticky) appFooter.style.bottom = '';
+  updateLayoutOffsets();
+}
+
+function updateLayoutOffsets() {
+  const fixedBottomNav = getFixedBottomNav();
+  const navHeight = getVisibleHeight(fixedBottomNav);
+  if (settings.footerSticky && appFooter) appFooter.style.bottom = `${navHeight}px`;
+  const footerHeight = settings.footerSticky ? getVisibleHeight(appFooter) : 0;
+  const baseGap = navHeight || footerHeight ? 8 : 0;
+  const safeBottom = navHeight + footerHeight + baseGap;
+  document.documentElement.style.setProperty('--safe-bottom-offset', `${safeBottom}px`);
+  if (toast) toast.style.bottom = `${Math.max(16, navHeight + footerHeight + 12)}px`;
+}
+
 function restartAlertLoop() {
   if (alertTimer) clearInterval(alertTimer);
   alertTimer = setInterval(notifyOverdue, Math.max(1, Number(settings.alertIntervalMinutes) || 60) * 60 * 1000);
@@ -424,6 +472,8 @@ settingsForm.addEventListener('submit', (event) => {
   settings.muteAlerts = document.getElementById('mute-alerts').checked;
   settings.compactMode = document.getElementById('compact-mode').checked;
   settings.reduceMotion = document.getElementById('reduce-motion').checked;
+  settings.footerSticky = document.getElementById('footer-sticky').checked;
+  settings.footerShort = document.getElementById('footer-short').checked;
   settings.extraOptions = normalizeExtraOptions(
     Array.from(document.querySelectorAll('#extra-settings-options input[type="checkbox"]')).reduce((acc, checkbox) => {
       acc[checkbox.dataset.optionKey] = checkbox.checked;
@@ -432,6 +482,7 @@ settingsForm.addEventListener('submit', (event) => {
   );
   document.body.classList.toggle('compact', settings.compactMode);
   document.body.classList.toggle('reduce-motion', settings.reduceMotion);
+  applyFooterPreferences();
   saveAll(); restartAlertLoop(); showToast('Paramètres enregistrés.');
 });
 
@@ -496,9 +547,13 @@ document.getElementById('alert-interval').value = settings.alertIntervalMinutes;
 document.getElementById('mute-alerts').checked = settings.muteAlerts;
 document.getElementById('compact-mode').checked = settings.compactMode;
 document.getElementById('reduce-motion').checked = settings.reduceMotion;
+document.getElementById('footer-sticky').checked = settings.footerSticky;
+document.getElementById('footer-short').checked = settings.footerShort;
 renderExtraSettingOptions();
 document.body.classList.toggle('compact', settings.compactMode);
 document.body.classList.toggle('reduce-motion', settings.reduceMotion);
+updateFooterYear();
+applyFooterPreferences();
 document.body.classList.toggle('dark', ui.dark);
 document.getElementById('theme-toggle').textContent = ui.dark ? '☀️' : '🌙';
 document.getElementById('proof-time').value = nowTime();
@@ -506,3 +561,4 @@ for (const key of ['warehouse', 'date', 'containerNumber', 'lfd']) if (draft[key
 renderAll();
 restartAlertLoop();
 switchPage(ui.page || 'dashboard');
+window.addEventListener('resize', updateLayoutOffsets);
