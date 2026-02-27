@@ -39,33 +39,36 @@
 
       <section class="card page" data-page="week">
         <h2>Vue de la semaine (lundi à vendredi)</h2>
-        <div class="toolbar grid compact">
-          <label>Recherche
-            <input type="search" id="search-input" placeholder="Ex: MSMU1231234" />
-          </label>
-          <label>Zone
-            <select id="filter-warehouse">
-              <option value="all">Toutes</option>
-              <option value="Langelier">Langelier</option>
-              <option value="Laval">Laval</option>
-              <option value="5995">5995</option>
-            </select>
-          </label>
-          <label>Statut
-            <select id="filter-status">
-              <option value="all">Tous</option>
-              <option value="active">Actifs</option>
-              <option value="archived">Archivés</option>
-              <option value="overdue">En retard</option>
-            </select>
-          </label>
-          <label>Trier
-            <select id="sort-mode">
-              <option value="time">Heure</option>
-              <option value="container">Conteneur</option>
-              <option value="lfd">LFD</option>
-            </select>
-          </label>
+        <div class="toolbar-panel">
+          <button id="toggle-search-filters" class="toolbar-toggle" type="button" aria-expanded="true" aria-controls="week-filters">Masquer les filtres de recherche</button>
+          <div id="week-filters" class="toolbar grid compact">
+            <label>Recherche
+              <input type="search" id="search-input" placeholder="Ex: MSMU1231234" />
+            </label>
+            <label>Zone
+              <select id="filter-warehouse">
+                <option value="all">Toutes</option>
+                <option value="Langelier">Langelier</option>
+                <option value="Laval">Laval</option>
+                <option value="5995">5995</option>
+              </select>
+            </label>
+            <label>Statut
+              <select id="filter-status">
+                <option value="all">Tous</option>
+                <option value="active">Actifs</option>
+                <option value="archived">Archivés</option>
+                <option value="overdue">En retard</option>
+              </select>
+            </label>
+            <label>Trier
+              <select id="sort-mode">
+                <option value="time">Heure</option>
+                <option value="container">Conteneur</option>
+                <option value="lfd">LFD</option>
+              </select>
+            </label>
+          </div>
         </div>
         <p class="hint">Raccourcis: D dashboard, W semaine, S cédule, P preuve, T paramètres.</p>
         <div class="actions wrap">
@@ -152,7 +155,7 @@
       <button type="button" data-target="dashboard">Dashboard</button>
       <button type="button" data-target="week">Semaine</button>
       <button type="button" data-target="schedule">Cédule</button>
-      <button type="button" data-target="proof">Archive</button>
+      <button type="button" data-target="proof">Réception</button>
       <button type="button" data-target="settings">Paramètres</button>
     </nav>
 

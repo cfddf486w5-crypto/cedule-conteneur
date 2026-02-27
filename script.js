@@ -163,6 +163,15 @@ function activeFilters(entry) {
   return true;
 }
 
+
+function toggleSearchFilters() {
+  const filters = document.getElementById('week-filters');
+  const toggle = document.getElementById('toggle-search-filters');
+  const isCollapsed = filters.classList.toggle('collapsed');
+  toggle.textContent = isCollapsed ? 'Afficher les filtres de recherche' : 'Masquer les filtres de recherche';
+  toggle.setAttribute('aria-expanded', String(!isCollapsed));
+}
+
 function sortEntries(list) {
   const mode = document.getElementById('sort-mode').value;
   return [...list].sort((a, b) => {
@@ -351,6 +360,7 @@ document.getElementById('prev-week').addEventListener('click', () => { currentWe
 document.getElementById('next-week').addEventListener('click', () => { currentWeekStart.setDate(currentWeekStart.getDate() + 7); saveAll(); renderAll(); });
 document.getElementById('today-week').addEventListener('click', () => { currentWeekStart = getStartOfWeek(new Date()); saveAll(); renderAll(); });
 document.getElementById('settings-shortcut').addEventListener('click', () => switchPage('settings'));
+document.getElementById('toggle-search-filters').addEventListener('click', toggleSearchFilters);
 document.getElementById('theme-toggle').addEventListener('click', () => { ui.dark = !ui.dark; document.body.classList.toggle('dark', ui.dark); document.getElementById('theme-toggle').textContent = ui.dark ? '☀️' : '🌙'; localStorage.setItem(uiKey, JSON.stringify(ui)); });
 document.getElementById('print-week').addEventListener('click', () => window.print());
 document.getElementById('export-schedule').addEventListener('click', () => exportCsv('cedules.csv', [['Container', 'Zone', 'Date', 'Heure', 'LFD', 'Importe', 'Archive'], ...entries.map((e) => [e.containerNumber, e.warehouse, e.date, e.startTime, e.lfd, e.imported, e.archivedAt || ''])]));
