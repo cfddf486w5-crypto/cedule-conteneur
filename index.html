@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cédule de conteneurs</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <h1>Cédule de conteneurs</h1>
+        <p>Planifiez des mouvements de conteneurs et partagez les mises à jour par e-mail.</p>
+      </header>
+
+      <section class="card">
+        <h2>Nouvelle entrée</h2>
+        <form id="schedule-form">
+          <div class="grid">
+            <label>
+              Date
+              <input type="date" id="date" required />
+            </label>
+
+            <label>
+              Heure (plage)
+              <div class="time-range">
+                <input type="time" id="startTime" required />
+                <span>à</span>
+                <input type="time" id="endTime" required />
+              </div>
+            </label>
+
+            <label class="full-width">
+              Numéro de conteneur
+              <input
+                type="text"
+                id="containerNumber"
+                placeholder="Ex: CMAU1234567"
+                required
+              />
+            </label>
+
+            <label class="full-width">
+              Notes / historique
+              <textarea
+                id="notes"
+                rows="3"
+                placeholder="Ex: Chargement quai 4, confirmer chauffeur..."
+              ></textarea>
+            </label>
+
+            <label class="full-width">
+              E-mail destinataire
+              <input
+                type="email"
+                id="email"
+                placeholder="exploitation@entreprise.com"
+                required
+              />
+            </label>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="primary">Ajouter à la cédule</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Historique</h2>
+        <ul id="history" class="history"></ul>
+      </section>
+    </main>
+
+    <template id="history-item-template">
+      <li class="history-item">
+        <div class="content"></div>
+        <div class="item-actions">
+          <button class="edit">Modifier</button>
+          <button class="email">Envoyer e-mail</button>
+          <button class="delete">Supprimer</button>
+        </div>
+      </li>
+    </template>
+
+    <script src="script.js" defer></script>
+  </body>
+</html>
