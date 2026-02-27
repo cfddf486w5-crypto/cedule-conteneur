@@ -320,16 +320,55 @@ function parseContainersFromText(text) {
   const queueSet = new Set(loadQueueFromStorage().map((item) => `${item.containerNumber}|${item.lfd}`));
   const entrySet = new Set(entries.map((entry) => `${String(entry.containerNumber || '').toUpperCase()}|${String(entry.lfd || '').toUpperCase()}`));
 
+  const getLfdFromLine = (line) => {
+    const explicitLfd = line.match(/\blfd\b\D*([0-9]{1,2}\/[0-9]{1,2})/i);
+    if (explicitLfd) {
+      const [month, day] = explicitLfd[1].split('/').map((part) => String(Number(part)).padStart(2, '0'));
+      return `${month}/${day}`;
+    }
+
+    const mmddyyyyDate = line.match(/\(?([0-9]{1,2})\/([0-9]{1,2})\/([0-9]{4})\s+([0-9]{1,2}):([0-9]{2})\)?/i);
+    if (mmddyyyyDate) {
+      const month = Number(mmddyyyyDate[1]);
+      const day = Number(mmddyyyyDate[2]);
+      const year = Number(mmddyyyyDate[3]);
+      const hour = Number(mmddyyyyDate[4]);
+      const minute = Number(mmddyyyyDate[5]);
+      const arrival = new Date(year, month - 1, day, hour, minute);
+      if (isValidDate(arrival)) {
+        arrival.setHours(arrival.getHours() + 24);
+        return `${String(arrival.getMonth() + 1).padStart(2, '0')}/${String(arrival.getDate()).padStart(2, '0')}`;
+      }
+    }
+
+    const monthNameDate = line.match(/\bon\s+([0-9]{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+([0-9]{1,2}):([0-9]{2})/i);
+    if (monthNameDate) {
+      const day = Number(monthNameDate[1]);
+      const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      const month = monthNames.indexOf(monthNameDate[2].slice(0, 3).toLowerCase());
+      const hour = Number(monthNameDate[3]);
+      const minute = Number(monthNameDate[4]);
+      if (month >= 0) {
+        const currentYear = new Date().getFullYear();
+        const arrival = new Date(currentYear, month, day, hour, minute);
+        if (isValidDate(arrival)) {
+          arrival.setHours(arrival.getHours() + 24);
+          return `${String(arrival.getMonth() + 1).padStart(2, '0')}/${String(arrival.getDate()).padStart(2, '0')}`;
+        }
+      }
+    }
+
+    return '';
+  };
+
   lines.forEach((line, index) => {
-    const containerMatch = line.match(/musu\s*\d+/i);
-    const lfdMatch = line.match(/\blfd\b\D*([0-9]{1,2}\/[0-9]{1,2})/i);
-    if (!containerMatch || !lfdMatch) {
-      ignored.push({ rawLine: line, reason: 'Format non reconnu (MUSU ou LFD manquant).' });
+    const containerMatch = line.match(/\b([A-Z]{4}\s*\d{7})\b/i);
+    const lfd = getLfdFromLine(line);
+    if (!containerMatch || !lfd) {
+      ignored.push({ rawLine: line, reason: 'Format non reconnu (conteneur ou date/LFD manquant).' });
       return;
     }
-    const containerNumber = containerMatch[0].replace(/\s+/g, '').toUpperCase();
-    const [month, day] = lfdMatch[1].split('/').map((part) => String(Number(part)).padStart(2, '0'));
-    const lfd = `${month}/${day}`;
+    const containerNumber = containerMatch[1].replace(/\s+/g, '').toUpperCase();
     const dedupeKey = `${containerNumber}|${lfd}`;
     if (recognized.some((item) => `${item.containerNumber}|${item.lfd}` === dedupeKey) || queueSet.has(dedupeKey) || entrySet.has(dedupeKey)) {
       ignored.push({ rawLine: line, reason: 'Doublon déjà en file ou cédulé.' });
