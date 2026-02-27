@@ -31,11 +31,14 @@ Exemples acceptés:
 - `Musu1233435 Lfd 02/28`
 - `MUSU1233435 - LFD: 02/28`
 - `musu1233435 lfd 02/28 Laval`
+- `GCXU5338400 40FT Arrived Montreal Taschereau, QC on 27 Feb 13:10`
+- `CAIU3538584 20FT (02/28/2026 09:00)`
 
 Le parseur détecte automatiquement:
 
-- Conteneur via `musu\s*\d+` (insensible à la casse)
-- LFD via `\blfd\b\D*([0-9]{1,2}\/[0-9]{1,2})`
+- Conteneur via le format ISO (`[A-Z]{4}` + `7` chiffres), insensible à la casse
+- LFD explicite (`LFD 02/28`) **ou** date d’arrivée (`MM/DD/YYYY HH:MM` ou `on 27 Feb 13:10`)
+- Quand seule la date d’arrivée est fournie, la LFD est calculée automatiquement à `+24h`
 
 ## Stockage local (localStorage)
 
