@@ -20,6 +20,8 @@ const proofKey = 'container-schedule-proof-v5';
 const settingsKey = 'container-schedule-settings-v2';
 const uiKey = 'container-ui-v2';
 const draftKey = 'container-draft-v1';
+const EXTRA_OPTION_CONFIRM_ARCHIVE = 'option-4';
+const EXTRA_OPTION_REQUIRE_ARCHIVE_NOTE = 'option-55';
 const safeParse = (value, fallback) => { try { return JSON.parse(value); } catch { return fallback; } };
 const isValidDate = (value) => value instanceof Date && !Number.isNaN(value.getTime());
 const getSafeDate = (value, fallback = new Date()) => {
@@ -553,6 +555,9 @@ proofForm.addEventListener('submit', (event) => {
   if (photoFile.size > 3 * 1024 * 1024) return showToast('Image trop lourde (max 3MB).');
   const entry = entries.find((candidate) => candidate.id === containerId);
   if (!entry) return showToast('Conteneur introuvable.');
+  if (isArchived(entry)) return showToast('Ce conteneur est déjà archivé.');
+  if (settings.extraOptions?.[EXTRA_OPTION_REQUIRE_ARCHIVE_NOTE] && !note) return showToast('Une note est obligatoire pour archiver ce conteneur.');
+  if (settings.extraOptions?.[EXTRA_OPTION_CONFIRM_ARCHIVE] && !confirm(`Confirmer l’archivage de ${entry.containerNumber} ?`)) return;
   const reader = new FileReader();
   reader.onload = () => {
     entry.archivedAt = `${formatDate(new Date())} ${receivedTime}`;
