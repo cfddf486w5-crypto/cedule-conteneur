@@ -194,19 +194,41 @@
 
       <section class="card page" data-page="settings" data-section-icon="⚙️">
         <h2>Paramètres d’alertes</h2>
-        <form id="settings-form" class="grid compact">
-          <label>Intervalle des alertes (minutes)
-            <input type="number" id="alert-interval" min="1" step="1" required />
-          </label>
-          <label><input type="checkbox" id="mute-alerts" /> Couper les notifications système</label>
-          <label><input type="checkbox" id="compact-mode" /> Mode compact</label>
-          <label><input type="checkbox" id="reduce-motion" /> Réduire les animations</label>
-          <label><input type="checkbox" id="footer-sticky" /> Footer fixe en bas (sticky)</label>
-          <label><input type="checkbox" id="footer-short" /> Footer court quand l’espace est restreint</label>
-          <fieldset class="settings-options">
-            <legend>Options avancées (<span id="extra-settings-count">0</span> options)</legend>
-            <div id="extra-settings-options" class="settings-options-grid"></div>
-          </fieldset>
+        <form id="settings-form" class="settings-categories">
+          <details class="settings-category">
+            <summary>🔔 Alertes</summary>
+            <div class="settings-category-content grid compact">
+              <label>Intervalle des alertes (minutes)
+                <input type="number" id="alert-interval" min="1" step="1" required />
+              </label>
+              <label><input type="checkbox" id="mute-alerts" /> Couper les notifications système</label>
+            </div>
+          </details>
+
+          <details class="settings-category">
+            <summary>🖥️ Affichage</summary>
+            <div class="settings-category-content grid compact">
+              <label><input type="checkbox" id="compact-mode" /> Mode compact</label>
+              <label><input type="checkbox" id="reduce-motion" /> Réduire les animations</label>
+            </div>
+          </details>
+
+          <details class="settings-category">
+            <summary>🧾 Footer</summary>
+            <div class="settings-category-content grid compact">
+              <label><input type="checkbox" id="footer-sticky" /> Footer fixe en bas (sticky)</label>
+              <label><input type="checkbox" id="footer-short" /> Footer court quand l’espace est restreint</label>
+            </div>
+          </details>
+
+          <details class="settings-category">
+            <summary>🧪 Options avancées (<span id="extra-settings-count">0</span> options)</summary>
+            <fieldset class="settings-options">
+              <legend>Activation détaillée</legend>
+              <div id="extra-settings-options" class="settings-options-grid"></div>
+            </fieldset>
+          </details>
+
           <div class="actions left wrap">
             <button type="submit" class="primary">💾 Enregistrer les paramètres</button>
             <button id="import-json" type="button">📥 Importer JSON</button>
