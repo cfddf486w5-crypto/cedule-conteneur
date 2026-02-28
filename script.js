@@ -525,7 +525,6 @@ function updateKpis() {
   document.getElementById('kpi-grid').innerHTML = [
     ['Total semaine', weekly.length], ['Archivés', archived], ['Importés', imported], ['En retard', overdue], ['Taux archivage', `${fillRate}%`],
   ].map(([label, value]) => `<article class="kpi"><small>${label}</small><h3>${value}</h3></article>`).join('');
-  document.getElementById('last-updated').textContent = `Dernière mise à jour: ${new Date().toLocaleString('fr-CA')}`;
 }
 
 function updateTimeOptions() {
