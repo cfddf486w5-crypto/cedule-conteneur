@@ -162,6 +162,27 @@ body.dark .container-card.overdue { background: #3a242d; }
 .settings-options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .5rem .75rem; }
 .settings-options-grid label { display: flex; align-items: center; gap: .45rem; font-weight: 500; }
 .settings-options-grid input[type="checkbox"] { width: auto; }
+.settings-categories { display: grid; gap: .65rem; }
+.settings-category {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255,255,255,.12);
+  padding: .2rem .7rem .7rem;
+}
+.settings-category > summary {
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+  padding: .55rem 0;
+}
+.settings-category > summary::-webkit-details-marker { display: none; }
+.settings-category > summary::after {
+  content: "▾";
+  float: right;
+  transition: transform .2s ease;
+}
+.settings-category[open] > summary::after { transform: rotate(180deg); }
+.settings-category-content { margin-top: .25rem; }
 .proof-list { list-style:none; padding:0; display:grid; gap:.55rem; }
 .proof-item { border:1px solid var(--border); border-radius:10px; padding:.6rem; background: rgba(255,255,255,.12); }
 .proof-item img { width:100%; max-width:180px; border-radius:8px; margin-top:.4rem; cursor: zoom-in; }
