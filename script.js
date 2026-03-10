@@ -15,12 +15,6 @@ const appFooter = document.getElementById('app-footer');
 const footerYear = document.getElementById('footer-year');
 const footerYearShort = document.getElementById('footer-year-short');
 
-const gameTableElement = document.getElementById('game-table');
-const battlefieldElement = document.getElementById('battlefield');
-const handZoneElement = document.getElementById('hand-zone');
-const drawCardButton = document.getElementById('draw-card');
-const deckCountElement = document.getElementById('deck-count');
-
 const importContainersButton = document.getElementById('open-import-containers');
 const importBackButton = document.getElementById('import-back-to-schedule');
 const importTextArea = document.getElementById('import-text');
@@ -281,142 +275,6 @@ let schedulePreferences = {
 let currentWeekStart = getStartOfWeek(getSafeDate(ui.weekStart));
 let alertTimer = null;
 let undoDeletedEntry = null;
-
-const gameState = {
-  deck: [],
-  hand: [],
-  battlefield: [],
-  maxHand: 7,
-};
-
-const creatureTypes = [
-  { type: 'water', label: 'Aqua', icon: '💧' },
-  { type: 'earth', label: 'Terra', icon: '🪨' },
-  { type: 'sand', label: 'Dune', icon: '🏜️' },
-];
-
-function createGameDeck() {
-  const deck = [];
-  for (let i = 0; i < 24; i += 1) {
-    const base = creatureTypes[i % creatureTypes.length];
-    deck.push({ id: crypto.randomUUID(), ...base, power: (i % 5) + 1 });
-  }
-  return deck.sort(() => Math.random() - 0.5);
-}
-
-function updateDeckUi() {
-  if (!deckCountElement || !drawCardButton) return;
-  deckCountElement.textContent = `Deck: ${gameState.deck.length} | Main: ${gameState.hand.length}/${gameState.maxHand}`;
-  drawCardButton.disabled = gameState.deck.length === 0 || gameState.hand.length >= gameState.maxHand;
-}
-
-function renderHand() {
-  if (!handZoneElement) return;
-  handZoneElement.innerHTML = gameState.hand.map((card) => `
-    <article class="game-card" data-card-id="${card.id}" data-type="${card.type}" role="button" aria-label="${card.label} puissance ${card.power}">
-      <span>${card.icon}</span>
-      <strong>${card.label}</strong>
-      <small>P${card.power}</small>
-    </article>
-  `).join('');
-}
-
-function renderBattlefield() {
-  if (!battlefieldElement) return;
-  battlefieldElement.innerHTML = gameState.battlefield.map((card) => `
-    <article class="battle-card" data-type="${card.type}">${card.icon} ${card.label} P${card.power}</article>
-  `).join('');
-}
-
-function animateDrawToHand() {
-  if (!drawCardButton || !handZoneElement) return;
-  const from = drawCardButton.getBoundingClientRect();
-  const to = handZoneElement.getBoundingClientRect();
-  const flyer = document.createElement('div');
-  flyer.className = 'draw-flyer';
-  flyer.style.setProperty('--sx', `${from.left + from.width / 2}px`);
-  flyer.style.setProperty('--sy', `${from.top + from.height / 2}px`);
-  flyer.style.setProperty('--tx', `${to.left + Math.min(70, to.width * 0.2)}px`);
-  flyer.style.setProperty('--ty', `${to.top + Math.min(40, to.height * 0.5)}px`);
-  document.body.appendChild(flyer);
-  flyer.addEventListener('animationend', () => flyer.remove(), { once: true });
-}
-
-function createImpactWave(type, x, y) {
-  if (!battlefieldElement) return;
-  const wave = document.createElement('span');
-  wave.className = `impact-wave ${type}`;
-  wave.style.left = `${x}px`;
-  wave.style.top = `${y}px`;
-  battlefieldElement.appendChild(wave);
-  wave.addEventListener('animationend', () => wave.remove(), { once: true });
-}
-
-function dropCardOnBattlefield(cardId, pointX, pointY) {
-  const cardIndex = gameState.hand.findIndex((item) => item.id === cardId);
-  if (cardIndex < 0) return;
-  const card = gameState.hand.splice(cardIndex, 1)[0];
-  gameState.battlefield.unshift(card);
-  renderHand();
-  renderBattlefield();
-  updateDeckUi();
-  const rect = battlefieldElement.getBoundingClientRect();
-  createImpactWave(card.type, pointX - rect.left, pointY - rect.top);
-}
-
-function bindHandDrag() {
-  if (!handZoneElement || !battlefieldElement) return;
-  handZoneElement.addEventListener('pointerdown', (event) => {
-    const cardElement = event.target.closest('.game-card');
-    if (!cardElement) return;
-    const cardId = cardElement.dataset.cardId;
-    const ghost = cardElement.cloneNode(true);
-    ghost.classList.add('drag-ghost');
-    document.body.appendChild(ghost);
-
-    const moveGhost = (x, y) => {
-      ghost.style.left = `${x}px`;
-      ghost.style.top = `${y}px`;
-    };
-    moveGhost(event.clientX, event.clientY);
-
-    const handleMove = (moveEvent) => {
-      moveGhost(moveEvent.clientX, moveEvent.clientY);
-    };
-
-    const handleUp = (upEvent) => {
-      document.removeEventListener('pointermove', handleMove);
-      document.removeEventListener('pointerup', handleUp);
-      ghost.remove();
-      const bf = battlefieldElement.getBoundingClientRect();
-      const inside = upEvent.clientX >= bf.left && upEvent.clientX <= bf.right && upEvent.clientY >= bf.top && upEvent.clientY <= bf.bottom;
-      if (inside) dropCardOnBattlefield(cardId, upEvent.clientX, upEvent.clientY);
-    };
-
-    document.addEventListener('pointermove', handleMove);
-    document.addEventListener('pointerup', handleUp, { once: true });
-  });
-}
-
-function initGameTable() {
-  if (!gameTableElement || !drawCardButton) return;
-  gameState.deck = createGameDeck();
-  gameState.hand = [];
-  gameState.battlefield = [];
-  renderHand();
-  renderBattlefield();
-  updateDeckUi();
-  drawCardButton.addEventListener('click', () => {
-    if (gameState.hand.length >= gameState.maxHand) return showToast('Maximum 7 cartes en main.');
-    const card = gameState.deck.pop();
-    if (!card) return showToast('Le deck est vide.');
-    gameState.hand.push(card);
-    animateDrawToHand();
-    renderHand();
-    updateDeckUi();
-  });
-  bindHandDrag();
-}
 
 const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
 const warehouses = ['Langelier', 'Laval', '5995'];
@@ -1114,6 +972,5 @@ if (draft.startTime) {
 }
 renderAll();
 restartAlertLoop();
-initGameTable();
 switchPage(ui.page || 'dashboard');
 window.addEventListener('resize', updateLayoutOffsets);
