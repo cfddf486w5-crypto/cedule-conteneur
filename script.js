@@ -618,7 +618,7 @@ function renderWeekView() {
         };
         const actions = document.createElement('div'); actions.className = 'card-actions';
         actions.innerHTML = ['edit', 'copy', 'duplicate', 'import', 'archive', 'delete']
-          .map((action) => `<button type="button" class="icon-square ${action === 'delete' ? 'danger' : ''}" data-act="${action}" title="${actionLabels[action]}" aria-label="${actionLabels[action]}">${actionIcons[action]}</button>`)
+          .map((action) => `<button type="button" class="icon-square has-tooltip ${action === 'delete' ? 'danger' : ''}" data-act="${action}" data-tooltip="${actionLabels[action]}" title="${actionLabels[action]}" aria-label="${actionLabels[action]}">${actionIcons[action]}</button>`)
           .join('');
         actions.addEventListener('click', (event) => {
           const action = event.target.dataset.act;
@@ -965,6 +965,30 @@ document.getElementById('settings-shortcut').addEventListener('click', () => swi
 document.getElementById('toggle-search-filters').addEventListener('click', toggleSearchFilters);
 document.getElementById('theme-toggle').addEventListener('click', () => { ui.dark = !ui.dark; document.body.classList.toggle('dark', ui.dark); document.getElementById('theme-toggle').textContent = ui.dark ? '☀️' : '🌙'; localStorage.setItem(uiKey, JSON.stringify(ui)); });
 document.getElementById('print-week').addEventListener('click', () => window.print());
+document.getElementById('share-week').addEventListener('click', () => {
+  const email = prompt("Entrez l'adresse e-mail destinataire :");
+  if (!email) return;
+  const trimmedEmail = email.trim();
+  if (!trimmedEmail) return;
+  const weekDates = getWeekDates(currentWeekStart);
+  const weeklyEntries = sortEntries(entries.filter((entry) => weekDates.includes(entry.date)));
+  if (!weeklyEntries.length) {
+    showToast('Aucune cédule à partager cette semaine.');
+    return;
+  }
+  const subject = `Cédule conteneurs - semaine du ${formatDate(currentWeekStart)}`;
+  const bodyLines = [
+    `Bonjour,`,
+    '',
+    `Voici la cédule des conteneurs pour la semaine du ${formatDate(currentWeekStart)} :`,
+    '',
+    ...weeklyEntries.map((entry) => `• ${entry.date} ${entry.startTime} | ${entry.containerNumber} | ${entry.warehouse} | LFD ${entry.lfd}`),
+    '',
+    'Merci.',
+  ];
+  const mailtoLink = `mailto:${encodeURIComponent(trimmedEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+  window.location.href = mailtoLink;
+});
 document.getElementById('export-schedule').addEventListener('click', () => exportCsv('cedules.csv', [['Container', 'Zone', 'Date', 'Heure', 'LFD', 'Importe', 'Archive'], ...entries.map((e) => [e.containerNumber, e.warehouse, e.date, e.startTime, e.lfd, e.imported, e.archivedAt || ''])]));
 document.getElementById('export-proofs').addEventListener('click', () => exportCsv('preuves.csv', [['Container', 'Date reception', 'Heure', 'Notes'], ...proofs.map((p) => [p.containerNumber, p.receivedDate, p.receivedTime, p.note || ''])]));
 document.getElementById('quick-today').addEventListener('click', () => { document.getElementById('date').value = formatDate(new Date()); updateTimeOptions(); });
