@@ -150,6 +150,30 @@ body.dark .container-card.overdue { background: #3a242d; }
   font-size: 1rem;
   line-height: 1;
 }
+
+@media (hover: hover) and (pointer: fine) {
+  .has-tooltip { position: relative; }
+  .has-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + .35rem);
+    transform: translateX(-50%);
+    background: var(--text);
+    color: var(--card);
+    font-size: .72rem;
+    line-height: 1;
+    padding: .3rem .45rem;
+    border-radius: .35rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .12s ease;
+    z-index: 5;
+  }
+  .has-tooltip:hover::after,
+  .has-tooltip:focus-visible::after { opacity: 1; }
+}
 .actions { display:flex; gap:.5rem; margin-top:.7rem; }
 .actions.wrap { flex-wrap:wrap; }
 .readonly-label { margin-top:.35rem; color: var(--ok); font-size:.86rem; }
