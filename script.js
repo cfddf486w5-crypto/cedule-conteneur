@@ -318,8 +318,8 @@ function parseContainersFromText(text) {
   const lines = String(text || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const recognized = [];
   const ignored = [];
-  const queueSet = new Set(loadQueueFromStorage().map((item) => `${item.containerNumber}|${item.lfd}`));
-  const entrySet = new Set(entries.map((entry) => `${String(entry.containerNumber || '').toUpperCase()}|${String(entry.lfd || '').toUpperCase()}`));
+  const queueSet = new Set(loadQueueFromStorage().map((item) => `${item.containerNumber}|${item.lfd || '__NO_LFD__'}`));
+  const entrySet = new Set(entries.map((entry) => `${String(entry.containerNumber || '').toUpperCase()}|${String(entry.lfd || '').toUpperCase() || '__NO_LFD__'}`));
 
   const getLfdFromLine = (line) => {
     const explicitLfd = line.match(/\blfd\b\D*([0-9]{1,2}\/[0-9]{1,2})/i);
@@ -365,13 +365,13 @@ function parseContainersFromText(text) {
   lines.forEach((line, index) => {
     const containerMatch = line.match(/\b([A-Z]{4}\s*\d{7})\b/i);
     const lfd = getLfdFromLine(line);
-    if (!containerMatch || !lfd) {
-      ignored.push({ rawLine: line, reason: 'Format non reconnu (conteneur ou date/LFD manquant).' });
+    if (!containerMatch) {
+      ignored.push({ rawLine: line, reason: 'Format non reconnu (conteneur manquant).' });
       return;
     }
     const containerNumber = containerMatch[1].replace(/\s+/g, '').toUpperCase();
-    const dedupeKey = `${containerNumber}|${lfd}`;
-    if (recognized.some((item) => `${item.containerNumber}|${item.lfd}` === dedupeKey) || queueSet.has(dedupeKey) || entrySet.has(dedupeKey)) {
+    const dedupeKey = `${containerNumber}|${lfd || '__NO_LFD__'}`;
+    if (recognized.some((item) => `${item.containerNumber}|${item.lfd || '__NO_LFD__'}` === dedupeKey) || queueSet.has(dedupeKey) || entrySet.has(dedupeKey)) {
       ignored.push({ rawLine: line, reason: 'Doublon déjà en file ou cédulé.' });
       return;
     }
@@ -379,6 +379,7 @@ function parseContainersFromText(text) {
       id: crypto.randomUUID(),
       containerNumber,
       lfd,
+      missingLfd: !lfd,
       rawLine: line,
       createdAt: new Date().toISOString(),
       status: 'pending',
@@ -464,9 +465,10 @@ function renderWizardStep() {
   }
   const current = pending[0];
   wizardProgress.textContent = `Conteneur ${done + 1} / ${total}`;
-  wizardCurrentCard.innerHTML = `<strong>${current.containerNumber}</strong><br/>LFD ${current.lfd}`;
+  const wizardLfdLabel = current.lfd ? `LFD ${current.lfd}` : 'LFD manquant ⚠️';
+  wizardCurrentCard.innerHTML = `<strong>${current.containerNumber}</strong><br/>${wizardLfdLabel}`;
   wizardContainerCorrection.value = current.containerNumber;
-  wizardLfdCorrection.value = current.lfd;
+  wizardLfdCorrection.value = current.lfd || '';
   wizardForm.classList.remove('hidden');
   wizardFinished.classList.add('hidden');
 }
@@ -595,8 +597,9 @@ function renderWeekView() {
       const overdue = entry.date < formatDate(new Date()) && !isArchived(entry);
       const box = document.createElement('div');
       box.className = `container-card ${isArchived(entry) ? 'archived' : ''} ${overdue ? 'overdue' : ''}`;
-      box.innerHTML = `<strong>${entry.containerNumber}</strong><br />${entry.warehouse} | ${entry.startTime} | LFD ${entry.lfd}`;
-      box.innerHTML += `<div class="badges">${entry.imported ? '<span class="badge ok">Importé</span>' : ''}${isArchived(entry) ? '<span class="badge ok">Archivé</span>' : ''}${overdue ? '<span class="badge warn">Retard</span>' : ''}</div>`;
+      const lfdLabel = entry.lfd ? `LFD ${entry.lfd}` : 'LFD manquant ⚠️';
+      box.innerHTML = `<strong>${entry.containerNumber}</strong><br />${entry.warehouse} | ${entry.startTime} | ${lfdLabel}`;
+      box.innerHTML += `<div class="badges">${entry.imported ? '<span class="badge ok">Importé</span>' : ''}${!entry.lfd ? '<span class="badge warn">⚠️ LFD manquant</span>' : ''}${isArchived(entry) ? '<span class="badge ok">Archivé</span>' : ''}${overdue ? '<span class="badge warn">Retard</span>' : ''}</div>`;
       if (isArchived(entry)) {
         box.innerHTML += `<div class="readonly-label">Archivé (lecture seule)</div>`;
       } else {
@@ -910,7 +913,7 @@ wizardForm.addEventListener('submit', (event) => {
   const dateISO = normalizeDate(wizardDate.value);
   const timeHHMM = normalizeTime(wizardTime.value);
   if (!correctedContainer || !/^[A-Z]{4}\d{7}$/i.test(correctedContainer)) return (wizardMessage.textContent = 'Conteneur invalide. Format AAAA1234567.');
-  if (!/^\d{2}\/\d{2}$/.test(correctedLfd)) return (wizardMessage.textContent = 'LFD invalide. Format MM/JJ.');
+  if (correctedLfd && !/^\d{2}\/\d{2}$/.test(correctedLfd)) return (wizardMessage.textContent = 'LFD invalide. Format MM/JJ.');
   if (!wizardSite.value || !dateISO || !timeHHMM) return (wizardMessage.textContent = 'Merci de remplir Site / Date / Heure.');
 
   const result = addScheduleEntry({
