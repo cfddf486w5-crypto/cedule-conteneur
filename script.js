@@ -6,6 +6,7 @@ const weekViewElement = document.getElementById('week-view');
 const proofContainerSelect = document.getElementById('proof-container');
 const proofForm = document.getElementById('proof-form');
 const proofList = document.getElementById('proof-list');
+const archiveListElement = document.getElementById('archive-list');
 const pages = document.querySelectorAll('.page');
 const navButtons = document.querySelectorAll('.bottom-nav button');
 const alertBox = document.getElementById('alert-box');
@@ -661,6 +662,20 @@ function renderProofList() {
     : '<li>Aucune preuve de réception.</li>';
 }
 
+function renderArchiveList() {
+  if (!archiveListElement) return;
+  const archivedEntries = entries.filter(isArchived).sort((a, b) => `${b.archivedAt || ''}`.localeCompare(`${a.archivedAt || ''}`));
+  if (!archivedEntries.length) {
+    archiveListElement.innerHTML = '<p class="hint">Aucun conteneur archivé.</p>';
+    return;
+  }
+
+  archiveListElement.innerHTML = archivedEntries.map((entry) => {
+    const proofsCount = proofs.filter((proof) => proof.containerId === entry.id).length;
+    return `<article class="archive-row"><div><strong>${entry.containerNumber}</strong><p class="hint">${entry.warehouse} | Cédule ${entry.date} ${entry.startTime} | Archivé ${entry.archivedAt}</p><p class="hint">Preuves: ${proofsCount}</p></div><button type="button" data-archive-add-proof="${entry.id}">➕ Ajouter preuve</button></article>`;
+  }).join('');
+}
+
 function validateConstraints(newEntry) {
   const dayEntries = entries.filter((entry) => entry.warehouse === newEntry.warehouse && entry.date === newEntry.date);
   if ([0, 6].includes(new Date(`${newEntry.date}T00:00:00`).getDay())) return 'La cédule est limitée au lundi-vendredi.';
@@ -734,7 +749,7 @@ function restartAlertLoop() {
 }
 
 function renderAll() {
-  renderWeekHeader(); updateKpis(); renderSummary(); renderWeekView(); renderProofSelector(); renderProofList(); updateTimeOptions();
+  renderWeekHeader(); updateKpis(); renderSummary(); renderWeekView(); renderProofSelector(); renderProofList(); renderArchiveList(); updateTimeOptions();
 }
 
 function exportCsv(filename, rows) {
@@ -794,6 +809,32 @@ proofForm.addEventListener('submit', (event) => {
   reader.onload = () => finalizeArchive(reader.result);
   reader.readAsDataURL(photoFile);
 });
+
+function addProofForArchived(entry, receivedTime, note, photoFile) {
+  const finalizeProof = (photoData = null) => {
+    proofs.unshift({
+      id: crypto.randomUUID(),
+      containerId: entry.id,
+      containerNumber: entry.containerNumber,
+      receivedDate: formatDate(new Date()),
+      receivedTime,
+      note,
+      photoData,
+    });
+    saveAll();
+    renderAll();
+    showToast('Preuve ajoutée au conteneur archivé.');
+  };
+
+  if (!photoFile) {
+    finalizeProof(null);
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => finalizeProof(reader.result);
+  reader.readAsDataURL(photoFile);
+}
 
 settingsForm.addEventListener('submit', (event) => {
   event.preventDefault();
@@ -928,9 +969,34 @@ document.getElementById('clear-all').addEventListener('click', () => {
   saveAll(); renderAll(); showToast('Toutes les données ont été vidées.');
 });
 
+
+document.getElementById('open-archive-page').addEventListener('click', () => switchPage('archive'));
+document.getElementById('archive-back-to-settings').addEventListener('click', () => switchPage('settings'));
+archiveListElement?.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-archive-add-proof]');
+  if (!button) return;
+  const entry = entries.find((candidate) => candidate.id === button.dataset.archiveAddProof);
+  if (!entry) return showToast('Conteneur introuvable.');
+
+  const receivedTime = prompt(`Heure de réception pour ${entry.containerNumber} (HH:MM)`, nowTime());
+  if (receivedTime === null) return;
+  if (!/^\d{2}:\d{2}$/.test(receivedTime)) return showToast('Format heure invalide (HH:MM).');
+  const note = prompt('Note (optionnel):', '') ?? '';
+
+  const upload = document.createElement('input');
+  upload.type = 'file';
+  upload.accept = 'image/*';
+  upload.addEventListener('change', () => {
+    const photoFile = upload.files?.[0] || null;
+    if (photoFile && photoFile.size > 3 * 1024 * 1024) return showToast('Image trop lourde (max 3MB).');
+    addProofForArchived(entry, receivedTime, note.trim(), photoFile);
+  }, { once: true });
+  upload.click();
+});
+
 document.addEventListener('keydown', (event) => {
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
-  const map = { d: 'dashboard', w: 'week', s: 'schedule', p: 'proof', t: 'settings' };
+  const map = { d: 'dashboard', w: 'week', s: 'schedule', p: 'proof', t: 'settings', a: 'archive' };
   const target = map[event.key.toLowerCase()];
   if (target) switchPage(target);
 });

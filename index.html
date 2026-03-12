@@ -53,7 +53,7 @@
             </label>
           </div>
         </div>
-        <p class="hint">Raccourcis: D dashboard, W semaine, S cédule, P preuve, T paramètres.</p>
+        <p class="hint">Raccourcis: D dashboard, W semaine, S cédule, P preuve, T paramètres, A archives.</p>
         <div class="actions wrap">
           <button id="print-week" type="button">🖨️ Imprimer la semaine</button>
           <button id="export-schedule" type="button">📤 Exporter cédules CSV</button>
@@ -235,6 +235,19 @@
         </form>
         <input type="file" id="json-file" accept="application/json" hidden />
         <p class="hint">Les alertes concernent les conteneurs passés (date dépassée) non archivés.</p>
+        <div class="actions wrap">
+          <button id="open-archive-page" type="button">📦 Ouvrir la page archive</button>
+        </div>
+        <p class="page-signature">DL.Logistique</p>
+      </section>
+
+      <section class="card page" data-page="archive" data-section-icon="📦">
+        <div class="page-header-inline">
+          <h2>Conteneurs archivés</h2>
+          <button id="archive-back-to-settings" type="button" class="small-action">← Retour paramètres</button>
+        </div>
+        <p class="hint">Liste de tous les conteneurs archivés. Utilisez « Ajouter preuve » pour joindre une preuve additionnelle si nécessaire.</p>
+        <div id="archive-list" class="archive-list"></div>
         <p class="page-signature">DL.Logistique</p>
       </section>
 
