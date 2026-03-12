@@ -1,0 +1,17 @@
+{
+  "name": "Réception de Conteneur",
+  "short_name": "Conteneur",
+  "description": "Cédule et réception de conteneurs",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0a4a9f",
+  "theme_color": "#0a4a9f",
+  "icons": [
+    {
+      "src": "assets/icons/app-icon.svg",
+      "sizes": "1024x1024",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
