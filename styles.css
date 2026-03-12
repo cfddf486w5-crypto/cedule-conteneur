@@ -138,13 +138,18 @@ body.dark .container-card.overdue { background: #3a242d; }
 .badge { border:1px solid var(--border); border-radius:999px; padding:.1rem .5rem; font-size:.75rem; }
 .badge.ok { color: var(--ok); border-color: var(--ok); }
 .badge.warn { color: var(--danger); border-color: var(--danger); }
-.card-actions { display:flex; gap:.35rem; flex-wrap:wrap; margin-top:.4rem; }
-.card-actions [data-act="edit"]::before { content: "✏️ "; }
-.card-actions [data-act="copy"]::before { content: "📋 "; }
-.card-actions [data-act="duplicate"]::before { content: "🧬 "; }
-.card-actions [data-act="import"]::before { content: "📥 "; }
-.card-actions [data-act="archive"]::before { content: "🗂️ "; }
-.card-actions [data-act="delete"]::before { content: "🗑️ "; }
+.card-actions { display:flex; gap:.3rem; flex-wrap:wrap; margin-top:.4rem; }
+.card-actions .icon-square {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: .45rem;
+  font-size: 1rem;
+  line-height: 1;
+}
 .actions { display:flex; gap:.5rem; margin-top:.7rem; }
 .actions.wrap { flex-wrap:wrap; }
 .readonly-label { margin-top:.35rem; color: var(--ok); font-size:.86rem; }

@@ -600,8 +600,26 @@ function renderWeekView() {
       if (isArchived(entry)) {
         box.innerHTML += `<div class="readonly-label">Archivé (lecture seule)</div>`;
       } else {
+        const actionIcons = {
+          edit: '✏️',
+          copy: '📋',
+          duplicate: '🧬',
+          import: entry.imported ? '📤' : '📥',
+          archive: '🗂️',
+          delete: '🗑️',
+        };
+        const actionLabels = {
+          edit: 'Modifier',
+          copy: 'Copier le numéro',
+          duplicate: 'Dupliquer',
+          import: entry.imported ? 'Retirer import' : 'Marquer importé',
+          archive: 'Archiver',
+          delete: 'Supprimer',
+        };
         const actions = document.createElement('div'); actions.className = 'card-actions';
-        actions.innerHTML = `<button data-act="edit">Modifier</button><button data-act="copy">Copier #</button><button data-act="duplicate">Dupliquer</button><button data-act="import">${entry.imported ? 'Retirer import' : 'Marquer importé'}</button><button data-act="archive">Archiver</button><button data-act="delete" class="danger">Supprimer</button>`;
+        actions.innerHTML = ['edit', 'copy', 'duplicate', 'import', 'archive', 'delete']
+          .map((action) => `<button type="button" class="icon-square ${action === 'delete' ? 'danger' : ''}" data-act="${action}" title="${actionLabels[action]}" aria-label="${actionLabels[action]}">${actionIcons[action]}</button>`)
+          .join('');
         actions.addEventListener('click', (event) => {
           const action = event.target.dataset.act;
           if (!action) return;
