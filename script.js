@@ -654,7 +654,10 @@ function renderProofSelector() {
 
 function renderProofList() {
   proofList.innerHTML = proofs.length
-    ? proofs.map((proof) => `<li class="proof-item"><strong>${proof.containerNumber}</strong> — ${proof.receivedDate} ${proof.receivedTime}<br/>${proof.note ? `<em>${proof.note}</em><br/>` : ''}<img src="${proof.photoData}" alt="Preuve ${proof.containerNumber}" /></li>`).join('')
+    ? proofs.map((proof) => {
+      const imageMarkup = proof.photoData ? `<img src="${proof.photoData}" alt="Preuve ${proof.containerNumber}" />` : '<span class="hint">Sans photo</span>';
+      return `<li class="proof-item"><strong>${proof.containerNumber}</strong> — ${proof.receivedDate} ${proof.receivedTime}<br/>${proof.note ? `<em>${proof.note}</em><br/>` : ''}${imageMarkup}</li>`;
+    }).join('')
     : '<li>Aucune preuve de réception.</li>';
 }
 
@@ -772,19 +775,23 @@ proofForm.addEventListener('submit', (event) => {
   const photoFile = document.getElementById('proof-photo').files[0];
   const receivedTime = document.getElementById('proof-time').value;
   const note = document.getElementById('proof-note').value.trim();
-  if (!containerId || !photoFile || !receivedTime) return showToast('Veuillez remplir les champs de preuve.');
-  if (photoFile.size > 3 * 1024 * 1024) return showToast('Image trop lourde (max 3MB).');
+  if (!containerId || !receivedTime) return showToast('Veuillez sélectionner un conteneur et une heure de réception.');
+  if (photoFile && photoFile.size > 3 * 1024 * 1024) return showToast('Image trop lourde (max 3MB).');
   const entry = entries.find((candidate) => candidate.id === containerId);
   if (!entry) return showToast('Conteneur introuvable.');
   if (isArchived(entry)) return showToast('Ce conteneur est déjà archivé.');
   if (settings.extraOptions?.[EXTRA_OPTION_REQUIRE_ARCHIVE_NOTE] && !note) return showToast('Une note est obligatoire pour archiver ce conteneur.');
   if (settings.extraOptions?.[EXTRA_OPTION_CONFIRM_ARCHIVE] && !confirm(`Confirmer l’archivage de ${entry.containerNumber} ?`)) return;
-  const reader = new FileReader();
-  reader.onload = () => {
+  const finalizeArchive = (photoData = null) => {
     entry.archivedAt = `${formatDate(new Date())} ${receivedTime}`;
-    proofs.unshift({ id: crypto.randomUUID(), containerId, containerNumber: entry.containerNumber, receivedDate: formatDate(new Date()), receivedTime, note, photoData: reader.result });
+    proofs.unshift({ id: crypto.randomUUID(), containerId, containerNumber: entry.containerNumber, receivedDate: formatDate(new Date()), receivedTime, note, photoData });
     saveAll(); renderAll(); proofForm.reset(); document.getElementById('proof-time').value = nowTime(); showToast('Conteneur archivé.');
   };
+
+  if (!photoFile) return finalizeArchive(null);
+
+  const reader = new FileReader();
+  reader.onload = () => finalizeArchive(reader.result);
   reader.readAsDataURL(photoFile);
 });
 
