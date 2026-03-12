@@ -175,10 +175,10 @@
       </section>
 
       <section class="card page" data-page="proof" data-section-icon="📸">
-        <h2>Archivage avec preuve</h2>
+        <h2>Archivage</h2>
         <form id="proof-form" class="proof-form">
           <label>Associer au conteneur<select id="proof-container" required></select></label>
-          <label>Photo de réception<input type="file" id="proof-photo" accept="image/*" required /></label>
+          <label>Photo de réception (optionnel)<input type="file" id="proof-photo" accept="image/*" /></label>
           <label>Heure de réception<input type="time" id="proof-time" required /></label>
           <label>Notes réception (optionnel)<textarea id="proof-note" rows="2" placeholder="Ex: palette complète"></textarea></label>
           <button type="submit" class="primary">🗃️ Archiver</button>
@@ -234,7 +234,7 @@
           </div>
         </form>
         <input type="file" id="json-file" accept="application/json" hidden />
-        <p class="hint">Les alertes concernent les conteneurs passés (date dépassée) non archivés avec preuve photo.</p>
+        <p class="hint">Les alertes concernent les conteneurs passés (date dépassée) non archivés.</p>
         <p class="page-signature">DL.Logistique</p>
       </section>
 
