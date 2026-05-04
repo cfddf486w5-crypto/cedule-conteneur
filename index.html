@@ -261,7 +261,13 @@
         <span class="footer-text footer-text-short" aria-hidden="true">DL.Log © <span id="footer-year-short"></span></span>
       </footer>
 
-      <div id="alert-box" class="alert-box hidden" aria-live="assertive"></div>
+      <div id="alert-box" class="alert-box hidden" aria-live="assertive">
+        <div class="alert-box-header">
+          <strong>Notification de retard</strong>
+          <button id="close-alert-box" type="button" class="alert-close-btn" aria-label="Fermer la notification de retard">✕</button>
+        </div>
+        <p id="alert-box-message" class="alert-box-message"></p>
+      </div>
       <div id="toast" class="toast hidden" aria-live="polite"></div>
     </main>
 
