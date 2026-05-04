@@ -10,6 +10,8 @@ const archiveListElement = document.getElementById('archive-list');
 const pages = document.querySelectorAll('.page');
 const navButtons = document.querySelectorAll('.bottom-nav button');
 const alertBox = document.getElementById('alert-box');
+const alertBoxMessage = document.getElementById('alert-box-message');
+const closeAlertBoxButton = document.getElementById('close-alert-box');
 const toast = document.getElementById('toast');
 const settingsForm = document.getElementById('settings-form');
 const appFooter = document.getElementById('app-footer');
@@ -712,12 +714,20 @@ function validateConstraints(newEntry) {
 
 function notifyOverdue() {
   const overdue = getOverdueEntries();
-  if (!overdue.length) { alertBox.classList.add('hidden'); alertBox.textContent = ''; return; }
+  if (!overdue.length) {
+    alertBox.classList.add('hidden');
+    if (alertBoxMessage) alertBoxMessage.textContent = '';
+    return;
+  }
   const list = overdue.map((entry) => `${entry.containerNumber} (${entry.date})`).join(', ');
   alertBox.classList.remove('hidden');
-  alertBox.textContent = `ALERTE: ${overdue.length} conteneur(s) non archivé(s): ${list}.`;
+  if (alertBoxMessage) alertBoxMessage.textContent = `ALERTE: ${overdue.length} conteneur(s) non archivé(s): ${list}.`;
   if (!settings.muteAlerts && 'Notification' in window && Notification.permission === 'granted') new Notification('Conteneurs non archivés', { body: list });
 }
+
+closeAlertBoxButton?.addEventListener('click', () => {
+  alertBox.classList.add('hidden');
+});
 
 
 function updateFooterYear() {
