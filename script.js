@@ -363,7 +363,7 @@ function parseContainersFromText(text) {
   };
 
   lines.forEach((line, index) => {
-    const containerMatch = line.match(/\b([A-Z]{4}\s*\d{7})\b/i);
+    const containerMatch = line.match(/\b([A-Z]{4}[A-Z0-9-]*)\b/i);
     const lfd = getLfdFromLine(line);
     if (!containerMatch) {
       ignored.push({ rawLine: line, reason: 'Format non reconnu (conteneur manquant).' });
@@ -795,7 +795,7 @@ form.addEventListener('submit', (event) => {
   };
   const errorBox = document.getElementById('form-message');
   if (!payload.warehouse || !payload.date || !payload.startTime || !payload.containerNumber || !payload.lfd) return (errorBox.textContent = 'Merci de remplir tous les champs.');
-  if (!/^[A-Z]{4}\d{7}$/.test(payload.containerNumber)) return (errorBox.textContent = 'Format attendu: MSMU1231234.');
+  if (!/^[A-Z]{4}[A-Z0-9-]*$/.test(payload.containerNumber)) return (errorBox.textContent = 'Format attendu: 4 lettres (ex: OCCU, OCGU, MSSU, PUIS) avec suffixe optionnel.');
   const validationError = validateConstraints(payload);
   if (validationError) return (errorBox.textContent = validationError);
   errorBox.textContent = '';
@@ -912,7 +912,7 @@ wizardForm.addEventListener('submit', (event) => {
   const correctedLfd = wizardLfdCorrection.value.trim();
   const dateISO = normalizeDate(wizardDate.value);
   const timeHHMM = normalizeTime(wizardTime.value);
-  if (!correctedContainer || !/^[A-Z]{4}\d{7}$/i.test(correctedContainer)) return (wizardMessage.textContent = 'Conteneur invalide. Format AAAA1234567.');
+  if (!correctedContainer || !/^[A-Z]{4}[A-Z0-9-]*$/i.test(correctedContainer)) return (wizardMessage.textContent = 'Conteneur invalide. Format: 4 lettres (suffixe optionnel).');
   if (correctedLfd && !/^\d{2}\/\d{2}$/.test(correctedLfd)) return (wizardMessage.textContent = 'LFD invalide. Format MM/JJ.');
   if (!wizardSite.value || !dateISO || !timeHHMM) return (wizardMessage.textContent = 'Merci de remplir Site / Date / Heure.');
 
